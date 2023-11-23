@@ -1,7 +1,8 @@
 import numpy as np
 import pandas as pd
-from sklearn.metrics import roc_auc_score, confusion_matrix, classification_report
-from sklearn.feature_selection import mutual_info_classif, SelectKBest, chi2
+from sklearn.metrics import roc_auc_score, classification_report
+from sklearn.feature_selection import SelectKBest, chi2
+from sklearn.ensemble import RandomForestClassifier
 
 def drop_missing(df, threshold):
     cols_to_drop = []
@@ -171,17 +172,41 @@ def risk_groupanizer(dataframe, column_names, target_val=1, upper_limit_ratio=8.
             dataframe.drop(col, axis=1, inplace=True)
     return dataframe, list(set(dataframe.columns).difference(set(all_cols)))
 
-def select_feature(X, y, k=10):
-    importances = mutual_info_classif(X, y)
-    indices = np.argsort(importances)[::-1]
-    print("Feature ranking:")
-    for f in range(X.shape[1]):
-        print("%d. %s (%f)" % (f + 1, X.columns[indices[f]], importances[indices[f]]))
-    return X.columns[indices[:k]].tolist()
-
 def select_feature_var_threshold(X, y, threshold=0.01):
     """
     Select features with variance threshold of value count
     """
     value_counts = X.apply(lambda x: x.value_counts(normalize=True).var(), axis=0)
     return X.columns[value_counts > threshold].tolist()
+
+def feature_importance_rf(X, y):
+    """
+    Select features using Random Forest.
+
+    Parameters:
+    X (DataFrame): The input DataFrame.
+    y (Series): The target variable.
+
+    Returns:
+    DataFrame: The DataFrame containing feature importances.
+    """
+    cols = X.columns
+    rf = RandomForestClassifier(n_estimators=100, random_state=0, n_jobs=-1)
+    rf.fit(X, y)
+    importances = pd.Series(rf.feature_importances_, index=cols)
+    return importances
+
+def select_features_rf(X, y, threshold=0.001):
+    """
+    Select features using Random Forest.
+
+    Parameters:
+    X (DataFrame): The input DataFrame.
+    y (Series): The target variable.
+    threshold (float): The threshold for feature selection.
+
+    Returns:
+    DataFrame: The DataFrame containing feature importances.
+    """
+    importances = feature_importance_rf(X, y)
+    return importances[importances >= threshold]
