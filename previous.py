@@ -1,11 +1,8 @@
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
-from sklearn.linear_model import LogisticRegression
-from sklearn.preprocessing import OneHotEncoder, MinMaxScaler, RobustScaler
+
 from sklearn.model_selection import train_test_split
-from sklearn.impute import SimpleImputer, KNNImputer, MissingIndicator
+from sklearn.impute import MissingIndicator
 
 from sklearn.metrics import roc_auc_score
 from sklearn.ensemble import RandomForestClassifier
@@ -23,7 +20,6 @@ def select_feature_var(df, threshold=0.001):
             df.drop(col, axis=1, inplace=True)
     print('Final shape: {}'.format(df.shape))
     return df
-
 
 
 # Load data
@@ -57,6 +53,6 @@ previous_agg = previous.groupby('SK_ID_CURR').mean()
 
 # Drop SK_ID_PREV
 previous_agg.drop(['SK_ID_PREV'], axis=1, inplace=True)
-previous_agg
 
-previous_agg.to_csv('processed_previous_2111.csv', index=True)
+# Save data
+previous_agg.to_csv('processed-data/processed_previous.csv', index=True)

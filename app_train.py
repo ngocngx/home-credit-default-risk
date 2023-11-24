@@ -126,20 +126,6 @@ test = test.drop(cat_cols, axis=1)
 train = pd.concat([train, train_cat_df], axis=1)
 test = pd.concat([test, test_cat_df], axis=1)
 
-# Merge with previous application
-previous = pd.read_csv('drafts/processed_previous_2111.csv')
-train = pd.merge(train, previous, on='SK_ID_CURR', how='left')
-test = pd.merge(test, previous, on='SK_ID_CURR', how='left')
-print('Number of nulls in train: ', train.isnull().sum().sum())
-print('Number of nulls in test: ', test.isnull().sum().sum())
-
-# Merge with bureau
-bureau = pd.read_csv('processed-data/processed_bureau.csv')
-train = pd.merge(train, bureau, on='SK_ID_CURR', how='left')
-test = pd.merge(test, bureau, on='SK_ID_CURR', how='left')
-print('Number of nulls in train: ', train.isnull().sum().sum())
-print('Number of nulls in test: ', test.isnull().sum().sum())
-
 # Replace inf
 train = train.replace([np.inf, -np.inf], np.nan)
 test = test.replace([np.inf, -np.inf], np.nan)
@@ -150,10 +136,14 @@ test = test.fillna(train.mean())
 print('Number of nulls in train: ', train.isnull().sum().sum())
 print('Number of nulls in test: ', test.isnull().sum().sum())
 
-# Set index
-train.set_index('SK_ID_CURR', inplace=True)
-test.set_index('SK_ID_CURR', inplace=True)
+# Select features
+selected_features = select_features_rf(train, y, threshold=0.0005)
+train = train[selected_features.index]
+test = test[selected_features.index]
 
+# Save train and test
+train.to_csv('processed-data/application_train.csv')
+test.to_csv('processed-data/application_test.csv')
 
 # Scale numerical features
 robust_scaler = RobustScaler(quantile_range=(1, 99))
@@ -165,33 +155,5 @@ minmax_scaler = MinMaxScaler()
 train = pd.DataFrame(minmax_scaler.fit_transform(train), columns=train.columns, index=train.index)
 test = pd.DataFrame(minmax_scaler.transform(test), columns=test.columns, index=test.index)
 
-print(f'train shape: {train.shape}')
-print(f'test shape: {test.shape}')
-print(f'y shape: {y.shape}')
-
-# Select features
-selected_features = select_features_rf(train, y, threshold=0.0005)
-train = train[selected_features.index]
-test = test[selected_features.index]
-
 print("Final train shape: ", train.shape)
-
-# Train
-log_reg = LogisticRegression(class_weight='balanced', solver='newton-cholesky', max_iter=750, C=100)
-
-# Cross validate
-scores = cross_val_score(log_reg, train, y, cv=5, scoring='roc_auc')
-print(f'ROC AUC scores: {scores}')
-print(f'ROC AUC mean: {scores.mean()}, GINI: {2*scores.mean() - 1}')
-
-# Fit
-log_reg.fit(train, y)
-
-# Predict
-y_pred = log_reg.predict_proba(test)[:, 1]
-submission = pd.DataFrame(index=test.index, data={'TARGET': y_pred})
-submission.sort_index(inplace=True)
-
-# Save submission with date
-today = date.today()
-submission.to_csv(f'submissions/submission_{today}.csv')
+print("Final test shape: ", test.shape)

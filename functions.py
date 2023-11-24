@@ -144,9 +144,6 @@ def reduce_mem_usage(dataframe):
     m_end = dataframe.memory_usage().sum() / 1024 ** 2
     return dataframe
 
-nan_as_category = True
-
-
 def risk_groupanizer(dataframe, column_names, target_val=1, upper_limit_ratio=8.2, lower_limit_ratio=8.2):
     # one-hot encoder killer :-)
     all_cols = dataframe.columns
