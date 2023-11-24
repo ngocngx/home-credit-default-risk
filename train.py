@@ -25,13 +25,21 @@ train['is_train'] = 1
 test['is_train'] = 0
 data = pd.concat([train, test], axis=0)
 
-# Merge with previous application
-previous_application = pd.read_csv('processed-data/processed_previous.csv')
-data = data.merge(previous_application, how='left', on='SK_ID_CURR')
+# # Merge with previous application
+# previous_application = pd.read_csv('processed-data/processed_previous.csv')
+# data = data.merge(previous_application, how='left', on='SK_ID_CURR')
 
 # Merge with credit card balance
 credit_card_balance = pd.read_csv('processed-data/processed_credit_card_balance.csv')
 data = data.merge(credit_card_balance, how='left', on='SK_ID_CURR')
+
+# # Merge with installments payments
+# installments_payments = pd.read_csv('processed-data/processed_installments.csv')
+# data = data.merge(installments_payments, how='left', on='SK_ID_CURR')
+
+# Merge with bureau
+bureau = pd.read_csv('processed-data/processed_bureau.csv')
+data = data.merge(bureau, how='left', on='SK_ID_CURR')
 
 # Set index
 data.set_index('SK_ID_CURR', inplace=True)
@@ -43,8 +51,8 @@ print(f'Train shape: {train.shape}, Test shape: {test.shape}')
 
 # Fill missing values
 imputer = SimpleImputer(strategy='median')
-train = pd.DataFrame(imputer.fit_transform(train), columns=train.columns)
-test = pd.DataFrame(imputer.transform(test), columns=test.columns)
+train = pd.DataFrame(imputer.fit_transform(train), columns=train.columns, index=train.index)
+test = pd.DataFrame(imputer.transform(test), columns=test.columns, index=test.index)
 
 # Scale numerical features
 robust_scaler = RobustScaler(quantile_range=(1, 99))
@@ -58,7 +66,7 @@ test = pd.DataFrame(minmax_scaler.transform(test), columns=test.columns, index=t
 
 # Train
 log_reg = LogisticRegression(class_weight='balanced', solver='newton-cholesky',
-                             max_iter=750)
+                             max_iter=100)
 
 # Cross validate
 scores = cross_val_score(log_reg, train, target, cv=5, scoring='roc_auc')

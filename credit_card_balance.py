@@ -13,8 +13,8 @@ cc, cat_cols = one_hot_encoder(cc, nan_as_category= True)
 
 # General aggregations
 cc.drop(['SK_ID_PREV'], axis= 1, inplace = True)
-cc_agg = cc.groupby('SK_ID_CURR').mean()
-# cc_agg.columns = pd.Index(['CC_' + e[0] + "_" + e[1].upper() for e in cc_agg.columns.tolist()])
+cc_agg = cc.groupby('SK_ID_CURR').agg(['min', 'max', 'mean', 'sum', 'var'])
+cc_agg.columns = pd.Index(['CC_' + e[0] + "_" + e[1].upper() for e in cc_agg.columns.tolist()])
 
 # Count credit card lines
 cc_agg['CC_COUNT'] = cc.groupby('SK_ID_CURR').size()
@@ -45,7 +45,8 @@ cc_agg = pd.DataFrame(imputer.fit_transform(cc_agg), columns=cc_agg.columns,
 print('Null values: {}'.format(cc_agg.isnull().values.sum()))
 
 # Select features
-selected_features = select_features_rf(cc_agg.drop(['TARGET'], axis=1), cc_agg['TARGET'])
+selected_features = select_features_rf(cc_agg.drop(['TARGET'], axis=1), 
+                                       cc_agg['TARGET'], threshold=0.005)
 print('Selected features: {}'.format(selected_features.index.tolist()))
 cc = cc_copy[selected_features.index.tolist()]
 
