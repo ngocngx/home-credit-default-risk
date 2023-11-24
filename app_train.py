@@ -1,15 +1,10 @@
 import numpy as np
 import pandas as pd
-from datetime import date
 
-from sklearn.linear_model import LogisticRegression
 from sklearn.preprocessing import OneHotEncoder, MinMaxScaler, RobustScaler
 from sklearn.impute import MissingIndicator
 
-from sklearn.metrics import roc_auc_score
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.feature_selection import SelectFromModel
-from sklearn.model_selection import cross_val_score
+from sklearn.decomposition import PCA
 from functions import *
 
 
@@ -32,7 +27,21 @@ def create_features(df):
         'ID_TO_BIRTH_RATIO': df['DAYS_ID_PUBLISH'] / df['DAYS_BIRTH'],
         'CAR_TO_BIRTH_RATIO': df['OWN_CAR_AGE'] / df['DAYS_BIRTH'],
         'CAR_TO_EMPLOYED_RATIO': df['OWN_CAR_AGE'] / df['DAYS_EMPLOYED'],
-        'PHONE_TO_BIRTH_RATIO': df['DAYS_LAST_PHONE_CHANGE'] / df['DAYS_BIRTH']
+        'PHONE_TO_BIRTH_RATIO': df['DAYS_LAST_PHONE_CHANGE'] / df['DAYS_BIRTH'],
+        # Change in income
+        'CHANGE_INCOME': df.groupby('SK_ID_CURR')['AMT_INCOME_TOTAL'].diff().fillna(0),
+        # Change in credit
+        'CHANGE_CREDIT': df.groupby('SK_ID_CURR')['AMT_CREDIT'].diff().fillna(0),
+        # Change in annuity
+        'CHANGE_ANNUITY': df.groupby('SK_ID_CURR')['AMT_ANNUITY'].diff().fillna(0),
+        # Loan Utilization Ratio
+        'LOAN_UR': df['AMT_CREDIT'] / df['AMT_GOODS_PRICE'],
+        # Age
+        'AGE': df['DAYS_BIRTH'].apply(lambda x: -int(x / 365)),
+        # Debt Burden Ratio
+        'DEBT_BURDEN': df['AMT_ANNUITY'] / df['AMT_INCOME_TOTAL'],
+        # External Source Product:
+        'EXT_SOURCE_PROD': df['EXT_SOURCE_1'] * df['EXT_SOURCE_2'] * df['EXT_SOURCE_3']
     }
 
     # Add new columns to the DataFrame all at once
@@ -145,15 +154,15 @@ test = test[selected_features.index]
 train.to_csv('processed-data/application_train.csv')
 test.to_csv('processed-data/application_test.csv')
 
-# Scale numerical features
-robust_scaler = RobustScaler(quantile_range=(1, 99))
-train = pd.DataFrame(robust_scaler.fit_transform(train), columns=train.columns, index=train.index)
-test = pd.DataFrame(robust_scaler.transform(test), columns=test.columns, index=test.index)
+# # Scale numerical features
+# robust_scaler = RobustScaler(quantile_range=(1, 99))
+# train = pd.DataFrame(robust_scaler.fit_transform(train), columns=train.columns, index=train.index)
+# test = pd.DataFrame(robust_scaler.transform(test), columns=test.columns, index=test.index)
 
-# MinMaxScaler
-minmax_scaler = MinMaxScaler()
-train = pd.DataFrame(minmax_scaler.fit_transform(train), columns=train.columns, index=train.index)
-test = pd.DataFrame(minmax_scaler.transform(test), columns=test.columns, index=test.index)
+# # MinMaxScaler
+# minmax_scaler = MinMaxScaler()
+# train = pd.DataFrame(minmax_scaler.fit_transform(train), columns=train.columns, index=train.index)
+# test = pd.DataFrame(minmax_scaler.transform(test), columns=test.columns, index=test.index)
 
-print("Final train shape: ", train.shape)
-print("Final test shape: ", test.shape)
+# print("Final train shape: ", train.shape)
+# print("Final test shape: ", test.shape)

@@ -1,5 +1,6 @@
 from datetime import date
 import pandas as pd
+import numpy as np
 
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import cross_val_score
@@ -25,21 +26,25 @@ train['is_train'] = 1
 test['is_train'] = 0
 data = pd.concat([train, test], axis=0)
 
-# # Merge with previous application
-# previous_application = pd.read_csv('processed-data/processed_previous.csv')
-# data = data.merge(previous_application, how='left', on='SK_ID_CURR')
+# Merge with previous application
+previous_application = pd.read_csv('processed-data/dseb63_previous_application_agg-2.csv')
+data = data.merge(previous_application, how='left', on='SK_ID_CURR')
 
 # Merge with credit card balance
 credit_card_balance = pd.read_csv('processed-data/processed_credit_card_balance.csv')
 data = data.merge(credit_card_balance, how='left', on='SK_ID_CURR')
 
-# # Merge with installments payments
-# installments_payments = pd.read_csv('processed-data/processed_installments.csv')
-# data = data.merge(installments_payments, how='left', on='SK_ID_CURR')
+# Merge with installments payments
+installments_payments = pd.read_csv('processed-data/processed_installments.csv')
+data = data.merge(installments_payments, how='left', on='SK_ID_CURR')
 
 # Merge with bureau
 bureau = pd.read_csv('processed-data/processed_bureau.csv')
 data = data.merge(bureau, how='left', on='SK_ID_CURR')
+
+# # Merge with pos cash balance
+# pos_cash_balance = pd.read_csv('processed-data/processed_pos_cash.csv')
+# data = data.merge(pos_cash_balance, how='left', on='SK_ID_CURR')
 
 # Set index
 data.set_index('SK_ID_CURR', inplace=True)
@@ -50,19 +55,19 @@ test = data[data['is_train'] == 0].drop(['is_train'], axis=1)
 print(f'Train shape: {train.shape}, Test shape: {test.shape}')
 
 # Fill missing values
-imputer = SimpleImputer(strategy='median')
-train = pd.DataFrame(imputer.fit_transform(train), columns=train.columns, index=train.index)
-test = pd.DataFrame(imputer.transform(test), columns=test.columns, index=test.index)
+imputer = SimpleImputer(strategy='mean')
+train = imputer.fit_transform(train)
+test = imputer.transform(test)
 
 # Scale numerical features
 robust_scaler = RobustScaler(quantile_range=(1, 99))
-train = pd.DataFrame(robust_scaler.fit_transform(train), columns=train.columns, index=train.index)
-test = pd.DataFrame(robust_scaler.transform(test), columns=test.columns, index=test.index)
+train = robust_scaler.fit_transform(train)
+test = robust_scaler.transform(test)
 
 # MinMaxScaler
 minmax_scaler = MinMaxScaler()
-train = pd.DataFrame(minmax_scaler.fit_transform(train), columns=train.columns, index=train.index)
-test = pd.DataFrame(minmax_scaler.transform(test), columns=test.columns, index=test.index)
+train = minmax_scaler.fit_transform(train)
+test = minmax_scaler.transform(test)
 
 # Train
 log_reg = LogisticRegression(class_weight='balanced', solver='newton-cholesky',
