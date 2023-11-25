@@ -3,6 +3,7 @@ import pandas as pd
 from sklearn.metrics import roc_auc_score, classification_report
 from sklearn.feature_selection import SelectKBest, chi2
 from sklearn.ensemble import RandomForestClassifier
+import xgboost as xgb
 
 def drop_missing(df, threshold):
     cols_to_drop = []
@@ -206,4 +207,22 @@ def select_features_rf(X, y, threshold=0.001):
     DataFrame: The DataFrame containing feature importances.
     """
     importances = feature_importance_rf(X, y)
+    return importances[importances >= threshold]
+
+def select_features_xgboost(X, y, threshold=0.001):
+    """
+    Select features using XGBoost.
+
+    Parameters:
+    X (DataFrame): The input DataFrame.
+    y (Series): The target variable.
+    threshold (float): The threshold for feature selection.
+
+    Returns:
+    DataFrame: The DataFrame containing feature importances.
+    """
+    cols = X.columns
+    xgb_model = xgb.XGBClassifier()
+    xgb_model.fit(X, y)
+    importances = pd.Series(xgb_model.feature_importances_, index=cols)
     return importances[importances >= threshold]

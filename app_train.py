@@ -146,7 +146,7 @@ print('Number of nulls in train: ', train.isnull().sum().sum())
 print('Number of nulls in test: ', test.isnull().sum().sum())
 
 # Select features
-selected_features = select_features_rf(train, y, threshold=0.0005)
+selected_features = select_features_xgboost(train, y, threshold=0.0005)
 train = train[selected_features.index]
 test = test[selected_features.index]
 

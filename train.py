@@ -5,7 +5,7 @@ import numpy as np
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import cross_val_score
 from sklearn.impute import SimpleImputer
-from sklearn.preprocessing import MinMaxScaler, RobustScaler
+from sklearn.preprocessing import MinMaxScaler, RobustScaler, StandardScaler
 
 # Load data
 train = pd.read_csv('processed-data/application_train.csv')
@@ -28,26 +28,37 @@ data = pd.concat([train, test], axis=0)
 
 # Merge with previous application
 previous_application = pd.read_csv('processed-data/dseb63_previous_application_agg-2.csv')
+print(f'Previous application shape: {previous_application.shape}')
 data = data.merge(previous_application, how='left', on='SK_ID_CURR')
 
 # Merge with credit card balance
 credit_card_balance = pd.read_csv('processed-data/processed_credit_card_balance.csv')
+print(f'Credit card balance shape: {credit_card_balance.shape}')
 data = data.merge(credit_card_balance, how='left', on='SK_ID_CURR')
 
-# Merge with installments payments
-installments_payments = pd.read_csv('processed-data/processed_installments.csv')
-data = data.merge(installments_payments, how='left', on='SK_ID_CURR')
+# # Merge with installments payments
+# installments_payments = pd.read_csv('processed-data/processed_installments.csv')
+# print(f'Installments payments shape: {installments_payments.shape}')
+# data = data.merge(installments_payments, how='left', on='SK_ID_CURR')
 
 # Merge with bureau
-bureau = pd.read_csv('processed-data/processed_bureau.csv')
+bureau = pd.read_csv('processed-data/processed_bureau_2511.csv')
+print(f'Bureau shape: {bureau.shape}')
 data = data.merge(bureau, how='left', on='SK_ID_CURR')
 
-# # Merge with pos cash balance
-# pos_cash_balance = pd.read_csv('processed-data/processed_pos_cash.csv')
-# data = data.merge(pos_cash_balance, how='left', on='SK_ID_CURR')
+# Merge with pos cash balance
+pos_cash_balance = pd.read_csv('processed-data/processed_pos_cash.csv')
+print(f'POS cash balance shape: {pos_cash_balance.shape}')
+data = data.merge(pos_cash_balance, how='left', on='SK_ID_CURR')
+
+# Print shape after merge
+print(f'Merged data shape: {data.shape}')
 
 # Set index
 data.set_index('SK_ID_CURR', inplace=True)
+
+# Replace inf with nan
+data = data.replace([np.inf, -np.inf], np.nan)
 
 # Split train and test
 train = data[data['is_train'] == 1].drop(['is_train'], axis=1)
@@ -59,13 +70,13 @@ imputer = SimpleImputer(strategy='mean')
 train = imputer.fit_transform(train)
 test = imputer.transform(test)
 
-# Scale numerical features
-robust_scaler = RobustScaler(quantile_range=(1, 99))
-train = robust_scaler.fit_transform(train)
-test = robust_scaler.transform(test)
+# # Scale numerical features
+# robust_scaler = RobustScaler(quantile_range=(1, 99))
+# train = robust_scaler.fit_transform(train)
+# test = robust_scaler.transform(test)
 
 # MinMaxScaler
-minmax_scaler = MinMaxScaler()
+minmax_scaler = StandardScaler()
 train = minmax_scaler.fit_transform(train)
 test = minmax_scaler.transform(test)
 

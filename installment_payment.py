@@ -67,7 +67,8 @@ print('Null values: {}'.format(installments.isnull().values.sum()))
 
 # Agrregate
 installments.drop(['SK_ID_PREV'], axis=1, inplace=True) 
-installments_agg = installments.groupby('SK_ID_CURR').mean()
+installments_agg = installments.groupby('SK_ID_CURR').agg(['min', 'max', 'mean', 'sum'])
+installments_agg.columns = pd.Index(['INSTALL_' + e[0] + "_" + e[1].upper() for e in installments_agg.columns.tolist()])
 
 # Merge with target
 installments_copy = installments_agg.copy()
@@ -83,7 +84,7 @@ installments_agg = pd.DataFrame(imputer.fit_transform(installments_agg), columns
 print('Null values: {}'.format(installments_agg.isnull().values.sum()))
 
 # Select features
-selected_features = select_features_rf(installments_agg.drop(['TARGET'], axis=1), installments_agg['TARGET'])
+selected_features = select_features_xgboost(installments_agg.drop(['TARGET'], axis=1), installments_agg['TARGET'])
 print('Selected features: {}'.format(selected_features.index.tolist()))
 installments_agg = installments_copy[selected_features.index.tolist()]
 
