@@ -4,6 +4,7 @@ from sklearn.metrics import roc_auc_score, classification_report
 from sklearn.feature_selection import SelectKBest, chi2
 from sklearn.ensemble import RandomForestClassifier
 import xgboost as xgb
+import lightgbm as lgbm
 
 def drop_missing(df, threshold):
     cols_to_drop = []
@@ -225,4 +226,38 @@ def select_features_xgboost(X, y, threshold=0.001):
     xgb_model = xgb.XGBClassifier()
     xgb_model.fit(X, y)
     importances = pd.Series(xgb_model.feature_importances_, index=cols)
+    return importances[importances >= threshold]
+
+def sanitize_columns(df):
+    """
+    Sanitize column names.
+
+    Parameters:
+    df (DataFrame): The input DataFrame.
+
+    Returns:
+    DataFrame: The DataFrame with sanitized column names.
+    """
+    json_char = ['{', '}', ':', '"', "'", ',', '[', ']']
+    df.columns = [''.join(c for c in str(x) if c not in json_char) for x in df.columns]
+    return df
+
+def select_features_lightgbm(X, y, threshold=0.001):
+    """
+    Select features using LightGBM.
+
+    Parameters:
+    X (DataFrame): The input DataFrame.
+    y (Series): The target variable.
+    threshold (float): The threshold for feature selection.
+
+    Returns:
+    DataFrame: The DataFrame containing feature importances.
+    """
+    cols = X.columns
+    lgbm_model = lgbm.LGBMClassifier()
+    lgbm_model.fit(X, y)
+    importances = pd.Series(lgbm_model.feature_importances_, index=cols)
+    # scale by max
+    importances = importances / importances.max()
     return importances[importances >= threshold]

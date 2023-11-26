@@ -145,10 +145,10 @@ test = test.fillna(train.mean())
 print('Number of nulls in train: ', train.isnull().sum().sum())
 print('Number of nulls in test: ', test.isnull().sum().sum())
 
-# Select features
-selected_features = select_features_xgboost(train, y, threshold=0.0005)
-train = train[selected_features.index]
-test = test[selected_features.index]
+# # Select features
+# selected_features = select_features_xgboost(train, y, threshold=0.0005)
+# train = train[selected_features.index]
+# test = test[selected_features.index]
 
 # Save train and test
 train.to_csv('processed-data/application_train.csv')
@@ -164,5 +164,5 @@ test.to_csv('processed-data/application_test.csv')
 # train = pd.DataFrame(minmax_scaler.fit_transform(train), columns=train.columns, index=train.index)
 # test = pd.DataFrame(minmax_scaler.transform(test), columns=test.columns, index=test.index)
 
-# print("Final train shape: ", train.shape)
-# print("Final test shape: ", test.shape)
+print("Final train shape: ", train.shape)
+print("Final test shape: ", test.shape)

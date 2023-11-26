@@ -82,7 +82,7 @@ print('Null values: {}'.format(cc_agg.isnull().values.sum()))
 
 # Select features
 selected_features = select_features_rf(cc_agg.drop(['TARGET'], axis=1), 
-                                       cc_agg['TARGET'], threshold=0.005)
+                                       cc_agg['TARGET'], threshold=0.0005)
 print('Number of selected features: {}'.format(len(selected_features.index.tolist())))
 cc = cc_copy[selected_features.index.tolist()]
 

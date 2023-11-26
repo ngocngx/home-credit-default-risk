@@ -1,11 +1,12 @@
 from datetime import date
 import pandas as pd
 import numpy as np
-
+from functions import *
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import cross_val_score
 from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import MinMaxScaler, RobustScaler, StandardScaler
+from sklearn.decomposition import PCA
 
 # Load data
 train = pd.read_csv('processed-data/application_train.csv')
@@ -36,10 +37,10 @@ credit_card_balance = pd.read_csv('processed-data/processed_credit_card_balance.
 print(f'Credit card balance shape: {credit_card_balance.shape}')
 data = data.merge(credit_card_balance, how='left', on='SK_ID_CURR')
 
-# # Merge with installments payments
-# installments_payments = pd.read_csv('processed-data/processed_installments.csv')
-# print(f'Installments payments shape: {installments_payments.shape}')
-# data = data.merge(installments_payments, how='left', on='SK_ID_CURR')
+# Merge with installments payments
+installments_payments = pd.read_csv('processed-data/processed_installments.csv')
+print(f'Installments payments shape: {installments_payments.shape}')
+data = data.merge(installments_payments, how='left', on='SK_ID_CURR')
 
 # Merge with bureau
 bureau = pd.read_csv('processed-data/processed_bureau_2511.csv')
@@ -65,8 +66,22 @@ train = data[data['is_train'] == 1].drop(['is_train'], axis=1)
 test = data[data['is_train'] == 0].drop(['is_train'], axis=1)
 print(f'Train shape: {train.shape}, Test shape: {test.shape}')
 
+# Sanitize column
+train = sanitize_columns(train)
+test = sanitize_columns(test)
+
+# Astype into float
+train = train.astype('float64')
+test = test.astype('float64')
+
+# Feature selection
+selected_features = select_features_lightgbm(train, target, threshold=0.005)
+print(f'Number of selected features: {len(selected_features)}')
+train = train[selected_features.index]
+test = test[selected_features.index]
+
 # Fill missing values
-imputer = SimpleImputer(strategy='mean')
+imputer = SimpleImputer(strategy='most_frequent')
 train_imputed = imputer.fit_transform(train)
 test_imputed = imputer.transform(test)
 
@@ -89,15 +104,14 @@ scores = cross_val_score(log_reg, train, target, cv=5, scoring='roc_auc')
 print(f'ROC AUC scores: {scores}')
 print(f'ROC AUC mean: {scores.mean()}, GINI: {2*scores.mean() - 1}')
 
-# # Fit
-# log_reg.fit(train, target)
+# Fit
+log_reg.fit(train, target)
 
-# # Predict
-# y_pred = log_reg.predict_proba(test)[:, 1]
-# submission = pd.DataFrame(index=test.index, data={'TARGET': y_pred})
-# submission.sort_index(inplace=True)
-# submission
+# Predict
+y_pred = log_reg.predict_proba(test)[:, 1]
+submission = pd.DataFrame(index=test.index, data={'TARGET': y_pred})
+submission.sort_index(inplace=True)
 
-# # Save submission with date
-# today = date.today()
+# Save submission with date
+today = date.today()
 submission.to_csv(f'submissions/submission-{today}.csv')
