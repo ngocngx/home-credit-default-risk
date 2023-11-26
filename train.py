@@ -67,24 +67,24 @@ print(f'Train shape: {train.shape}, Test shape: {test.shape}')
 
 # Fill missing values
 imputer = SimpleImputer(strategy='mean')
-train = imputer.fit_transform(train)
-test = imputer.transform(test)
-
-# # Scale numerical features
-# robust_scaler = RobustScaler(quantile_range=(1, 99))
-# train = robust_scaler.fit_transform(train)
-# test = robust_scaler.transform(test)
+train_imputed = imputer.fit_transform(train)
+test_imputed = imputer.transform(test)
 
 # MinMaxScaler
 minmax_scaler = StandardScaler()
-train = minmax_scaler.fit_transform(train)
-test = minmax_scaler.transform(test)
+train_scaled = minmax_scaler.fit_transform(train_imputed)
+test_scaled = minmax_scaler.transform(test_imputed)
+
+# Convert to dataframe
+train = pd.DataFrame(train_scaled, index=train.index, columns=train.columns)
+test = pd.DataFrame(test_scaled, index=test.index, columns=test.columns)
 
 # Train
 log_reg = LogisticRegression(class_weight='balanced', solver='newton-cholesky',
                              max_iter=100)
 
 # Cross validate
+print('Cross validating...')
 scores = cross_val_score(log_reg, train, target, cv=5, scoring='roc_auc')
 print(f'ROC AUC scores: {scores}')
 print(f'ROC AUC mean: {scores.mean()}, GINI: {2*scores.mean() - 1}')
@@ -100,4 +100,4 @@ print(f'ROC AUC mean: {scores.mean()}, GINI: {2*scores.mean() - 1}')
 
 # # Save submission with date
 # today = date.today()
-# submission.to_csv(f'submissions/submission-{today}.csv')
+submission.to_csv(f'submissions/submission-{today}.csv')
