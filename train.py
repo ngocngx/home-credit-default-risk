@@ -75,7 +75,7 @@ train = train.astype('float64')
 test = test.astype('float64')
 
 # Feature selection
-selected_features = select_features_lightgbm(train, target, threshold=0.005)
+selected_features = select_features_lightgbm(train, target, threshold=0.01)
 print(f'Number of selected features: {len(selected_features)}')
 train = train[selected_features.index]
 test = test[selected_features.index]
@@ -85,10 +85,10 @@ imputer = SimpleImputer(strategy='most_frequent')
 train_imputed = imputer.fit_transform(train)
 test_imputed = imputer.transform(test)
 
-# MinMaxScaler
-minmax_scaler = StandardScaler()
-train_scaled = minmax_scaler.fit_transform(train_imputed)
-test_scaled = minmax_scaler.transform(test_imputed)
+# Standardize
+standard_scaler = StandardScaler()
+train_scaled = standard_scaler.fit_transform(train_imputed)
+test_scaled = standard_scaler.transform(test_imputed)
 
 # Convert to dataframe
 train = pd.DataFrame(train_scaled, index=train.index, columns=train.columns)

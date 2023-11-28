@@ -6,6 +6,68 @@ from sklearn.ensemble import RandomForestClassifier
 import xgboost as xgb
 import lightgbm as lgbm
 
+class WoETransformer:
+    def __init__(self, smoothing=0.5, default_woe=0.5):
+        self.woe_dict = {}
+        self.smoothing = smoothing
+        self.default_woe = default_woe
+
+    def fit(self, X, y):
+        """
+        Fit the transformer to the data.
+
+        :param X: DataFrame, feature data (only categorical columns)
+        :param y: Series, target variable
+        """
+        # Ensure X is a DataFrame
+        if not isinstance(X, pd.DataFrame):
+            raise ValueError("X must be a pandas DataFrame")
+
+        # Combine X and y for easier groupby operations
+        data = X.copy()
+        data['y'] = y
+
+        total_events = y.sum() + self.smoothing
+        total_non_events = y.count() - total_events + self.smoothing
+
+        for column in X.columns:
+            if data[column].dtype.name == 'category' or isinstance(data[column].iloc[0], str):
+                # Group by each category and calculate sums and counts
+                grouped = data.groupby(column)['y'].agg(['sum', 'count'])
+                grouped['event'] = grouped['sum'] + self.smoothing
+                grouped['non_event'] = grouped['count'] - grouped['event'] + self.smoothing
+
+                # Calculate WoE
+                grouped['woe'] = np.log((grouped['event'] / total_events) / (grouped['non_event'] / total_non_events))
+                self.woe_dict[column] = grouped['woe'].to_dict()
+
+    def transform(self, X):
+        """
+        Transform the data using the fitted WoE values.
+
+        :param X: DataFrame, feature data to be transformed
+        :return: Transformed DataFrame
+        """
+        # Astype into category
+        X = X.astype('category')
+
+        X_transformed = X.copy()
+            
+        for column in self.woe_dict:
+            if column in X_transformed.columns:
+                # Handle categorical data
+                if X_transformed[column].dtype.name == 'category' or isinstance(X_transformed[column].iloc[0], str):
+                    # Add default WoE category if needed
+                    if X_transformed[column].dtype.name == 'category':
+                        X_transformed[column] = X_transformed[column].cat.add_categories([self.default_woe])
+
+                    X_transformed[column] = X_transformed[column].map(self.woe_dict[column]).fillna(self.default_woe)
+            else:
+                # If column is not in test data, create it with default WoE value
+                X_transformed[column] = self.default_woe
+
+        return X_transformed
+
 def drop_missing(df, threshold):
     cols_to_drop = []
     for col in df.columns:
@@ -257,6 +319,61 @@ def select_features_lightgbm(X, y, threshold=0.001):
     lgbm_model = lgbm.LGBMClassifier()
     lgbm_model.fit(X, y)
     importances = pd.Series(lgbm_model.feature_importances_, index=cols)
-    # scale by max
-    importances = importances / importances.max()
+    print('Max importance: {}'.format(importances.max()))
+    importances = importances / 10
     return importances[importances >= threshold]
+
+import pandas as pd
+import numpy as np
+
+def calculate_iv(X, y, bins=10, missing=False):
+    """
+    Calculate the Information Value (IV) of each feature in X relative to the binary target y.
+
+    :param X: DataFrame, feature data
+    :param y: Series, binary target variable
+    :param bins: Number of bins to use for numerical features
+    :param missing: Whether to include missing values as a separate category
+    :return: DataFrame with IV values for each feature
+    """
+    iv_dict = {}
+    for column in X.columns:
+        if X[column].dtype.kind in 'fi':  # Numeric features
+            X[column] = pd.qcut(X[column], q=bins, duplicates='drop').cat.add_categories(['MISSING'])
+        elif missing:
+            X[column] = X[column].astype('category').cat.add_categories(['MISSING'])
+
+        if missing:
+            X[column].fillna('MISSING', inplace=True)
+
+        # Calculate WoE and IV
+        grouped = X.groupby(column)[y.name].agg(['sum', 'count'])
+        grouped['event'] = grouped['sum']
+        grouped['non_event'] = grouped['count'] - grouped['event']
+        grouped['event_dist'] = grouped['event'] / grouped['event'].sum()
+        grouped['non_event_dist'] = grouped['non_event'] / grouped['non_event'].sum()
+        grouped['woe'] = np.log(grouped['event_dist'] / grouped['non_event_dist'])
+        grouped['iv'] = (grouped['event_dist'] - grouped['non_event_dist']) * grouped['woe']
+        
+        iv_value = grouped['iv'].sum()
+        iv_dict[column] = iv_value
+
+    iv_df = pd.DataFrame.from_dict(iv_dict, orient='index', columns=['IV'])
+    return iv_df
+
+def select_features_by_iv(iv_df, threshold=0.1):
+    """
+    Select features based on a threshold IV value.
+
+    :param iv_df: DataFrame with IV values for each feature
+    :param threshold: IV threshold for feature selection
+    :return: List of selected features
+    """
+    selected_features = iv_df[iv_df['IV'] >= threshold].index.tolist()
+    return selected_features
+
+# Usage Example
+# iv_df = calculate_iv(X_train, y_train, bins=10, missing=True)
+# selected_features = select_features_by_iv(iv_df, threshold=0.1)
+# X_train_selected = X_train[selected_features]
+# X_test_selected = X_test[selected_features]

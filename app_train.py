@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 
 from sklearn.preprocessing import OneHotEncoder, MinMaxScaler, RobustScaler
-from sklearn.impute import MissingIndicator
+from sklearn.impute import MissingIndicator, SimpleImputer
 
 from sklearn.decomposition import PCA
 from functions import *
@@ -102,67 +102,42 @@ y = train['TARGET']
 train = train.drop('TARGET', axis=1)
 test = test.drop('TARGET', axis=1)
 
-# Fill nan by mode for categorical features and mean for numerical features
-cat_cols = train.select_dtypes(include=['object']).columns
-num_cols = train.select_dtypes(exclude=['object']).columns
+# # Binning numerical features
+# print('Binning numerical features')
+# num_cols = [col for col in train.columns if train[col].dtype != 'object']
 
-train_mode = train[cat_cols].mode().iloc[0]
-train_mean = train[num_cols].mean()
+# WoETransformer
+print('WoETransformer')
+woe_transformer = WoETransformer()
+woe_transformer.fit(train, y)
 
-for col in cat_cols:
-    train[col] = train[col].fillna(train_mode[col])
-    test[col] = test[col].fillna(train_mode[col])
-
-for col in num_cols:
-    train[col] = train[col].fillna(train_mean[col])
-    test[col] = test[col].fillna(train_mean[col])
-
-# OneHotEncoder
-ohe = OneHotEncoder(handle_unknown='ignore')
-ohe.fit(train[cat_cols])
-train_cat = ohe.transform(train[cat_cols]).toarray()
-test_cat = ohe.transform(test[cat_cols]).toarray()
-
-train_cat_df = pd.DataFrame(train_cat, columns=ohe.get_feature_names_out(cat_cols),
-                            index=train.index)
-test_cat_df = pd.DataFrame(test_cat, columns=ohe.get_feature_names_out(cat_cols),
-                           index=test.index)
-
-# Drop and concat
-train = train.drop(cat_cols, axis=1)
-test = test.drop(cat_cols, axis=1)
-
-train = pd.concat([train, train_cat_df], axis=1)
-test = pd.concat([test, test_cat_df], axis=1)
+train = woe_transformer.transform(train)
+test = woe_transformer.transform(test)
+print(f'train shape: {train.shape}')
+print(f'test shape: {test.shape}')
 
 # Replace inf
 train = train.replace([np.inf, -np.inf], np.nan)
 test = test.replace([np.inf, -np.inf], np.nan)
 
-# Fill nan
-train = train.fillna(train.mean())
-test = test.fillna(train.mean())
-print('Number of nulls in train: ', train.isnull().sum().sum())
-print('Number of nulls in test: ', test.isnull().sum().sum())
+# Impute missing values
+print('Impute missing values')
+imputer = SimpleImputer(strategy='most_frequent')
+train = pd.DataFrame(imputer.fit_transform(train), columns=train.columns, index=train.index)
+test = pd.DataFrame(imputer.transform(test), columns=test.columns, index=test.index)
+print("Number of nulls in train: ", np.isnan(train).sum().sum())
+print("Number of nulls in test: ", np.isnan(test).sum().sum())
 
-# # Select features
-# selected_features = select_features_xgboost(train, y, threshold=0.0005)
-# train = train[selected_features.index]
-# test = test[selected_features.index]
-
-# Save train and test
-train.to_csv('processed-data/application_train.csv')
-test.to_csv('processed-data/application_test.csv')
-
-# # Scale numerical features
-# robust_scaler = RobustScaler(quantile_range=(1, 99))
-# train = pd.DataFrame(robust_scaler.fit_transform(train), columns=train.columns, index=train.index)
-# test = pd.DataFrame(robust_scaler.transform(test), columns=test.columns, index=test.index)
-
-# # MinMaxScaler
-# minmax_scaler = MinMaxScaler()
-# train = pd.DataFrame(minmax_scaler.fit_transform(train), columns=train.columns, index=train.index)
-# test = pd.DataFrame(minmax_scaler.transform(test), columns=test.columns, index=test.index)
+# Select features
+selected_features = select_features_lightgbm(train, y, threshold=0.001)
+train = train[selected_features.index]
+test = test[selected_features.index]
 
 print("Final train shape: ", train.shape)
 print("Final test shape: ", test.shape)
+
+# Save train and test
+print('Saving...')
+train.to_csv('processed-data/application_train.csv')
+test.to_csv('processed-data/application_test.csv')
+print('Done!')
