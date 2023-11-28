@@ -67,7 +67,7 @@ print('Null values: {}'.format(installments.isnull().values.sum()))
 
 # Agrregate
 installments.drop(['SK_ID_PREV'], axis=1, inplace=True) 
-installments_agg = installments.groupby('SK_ID_CURR').agg(['min', 'max', 'mean', 'sum'])
+installments_agg = installments.groupby('SK_ID_CURR').agg(['min', 'max', 'mean', 'sum', 'std'])
 installments_agg.columns = pd.Index(['INSTALL_' + e[0] + "_" + e[1].upper() for e in installments_agg.columns.tolist()])
 
 # Merge with target

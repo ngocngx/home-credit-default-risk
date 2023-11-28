@@ -57,10 +57,9 @@ def aggregate_prev(df):
     id_curr_agg = id_curr.groupby('SK_ID_PREV').first()
 
     df = df.drop(columns=['SK_ID_CURR'])
-    
+
     num_df = df[df.select_dtypes(include='number').columns.tolist()]
     cat_df = df[df.select_dtypes(include='object').columns.tolist() + ['SK_ID_PREV']]
-
 
     num_df = num_df.groupby('SK_ID_PREV').agg(['min', 'max', 'mean', 'sum'])
     cat_df = cat_df.groupby('SK_ID_PREV').agg([mode, 'nunique', 'count'])
