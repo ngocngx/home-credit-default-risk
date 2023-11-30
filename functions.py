@@ -7,66 +7,114 @@ import xgboost as xgb
 import lightgbm as lgbm
 
 class WoETransformer:
-    def __init__(self, smoothing=0.5, default_woe=0.5):
+    def __init__(self, smoothing=0.5, default_woe=0.5, bins=10):
         self.woe_dict = {}
+        self.bin_edges = {}  # To store bin edges for numerical features
         self.smoothing = smoothing
         self.default_woe = default_woe
+        self.bins = bins
+        self.num_cols = None
+        self.cat_cols = None
+        self.values_to_fill = {}
 
-    def fit(self, X, y):
-        """
-        Fit the transformer to the data.
+    def _calculate_woe(self, X, col, y, event_rate, non_event_rate):
+        # Calculate WoE and save into dictionary
+        woe = X.groupby(col)['y'].agg(['sum', 'count']).rename(columns={'sum': 'numerator', 'count': 'denominator'})
+        
+        # Avoid division by zero
+        woe['denominator'] = np.where(woe['denominator'] == 0, 1, woe['denominator'])
+        
+        # Add a small constant value to the numerator and denominator to prevent division by zero
+        epsilon = 1e-10
+        woe['woe'] = np.log((woe['numerator'] + epsilon) / (woe['denominator'] + epsilon) / (event_rate / non_event_rate))
+        
+        # Replace infinite values with a large finite value (e.g., max value of the WoE series)
+        max_woe = woe['woe'].replace([-np.inf, np.inf], np.nan).max()
+        woe['woe'] = woe['woe'].replace([-np.inf, np.inf], max_woe)
+        
+        return woe['woe'].to_dict()
+    
+    def _calculate_woe_numerical(self, X, col, y, event_rate, non_event_rate):
+        # Calculate WoE for numerical columns
+        bins, bin_edges = pd.qcut(X[col], q=self.bins, retbins=True, duplicates='drop')
+        X['binned'] = pd.cut(X[col], bins=bin_edges, duplicates='drop', include_lowest=True)
 
-        :param X: DataFrame, feature data (only categorical columns)
-        :param y: Series, target variable
-        """
-        # Ensure X is a DataFrame
-        if not isinstance(X, pd.DataFrame):
-            raise ValueError("X must be a pandas DataFrame")
+        woe = X.groupby('binned')['y'].agg(['sum', 'count']).rename(columns={'sum': 'numerator', 'count': 'denominator'})
+        woe['denominator'] = np.where(woe['denominator'] == 0, 1, woe['denominator'])
+        epsilon = 1e-10
+        woe['woe'] = np.log((woe['numerator'] + epsilon) / (woe['denominator'] + epsilon) / (event_rate / non_event_rate))
 
-        # Combine X and y for easier groupby operations
-        data = X.copy()
-        data['y'] = y
+        max_woe = woe['woe'].replace([-np.inf, np.inf], np.nan).max()
+        woe['woe'] = woe['woe'].replace([-np.inf, np.inf], max_woe)
 
-        total_events = y.sum() + self.smoothing
-        total_non_events = y.count() - total_events + self.smoothing
+        return woe['woe'].to_dict(), bin_edges
 
-        for column in X.columns:
-            if data[column].dtype.name == 'category' or isinstance(data[column].iloc[0], str):
-                # Group by each category and calculate sums and counts
-                grouped = data.groupby(column)['y'].agg(['sum', 'count'])
-                grouped['event'] = grouped['sum'] + self.smoothing
-                grouped['non_event'] = grouped['count'] - grouped['event'] + self.smoothing
+    def fit(self, df, y):
+        X = df.copy()
+        X['y'] = y
 
-                # Calculate WoE
-                grouped['woe'] = np.log((grouped['event'] / total_events) / (grouped['non_event'] / total_non_events))
-                self.woe_dict[column] = grouped['woe'].to_dict()
+        # Get numerical columns
+        self.num_cols = X.select_dtypes('number').columns
+        self.num_cols = self.num_cols.drop('y')
 
-    def transform(self, X):
-        """
-        Transform the data using the fitted WoE values.
+        # Get categorical columns
+        self.cat_cols = X.select_dtypes('category').columns
 
-        :param X: DataFrame, feature data to be transformed
-        :return: Transformed DataFrame
-        """
-        # Astype into category
-        X = X.astype('category')
+        # Calculate event rate
+        event_rate = y.mean() + self.smoothing
+        non_event_rate = 1 - event_rate + self.smoothing
 
-        X_transformed = X.copy()
+        # Loop over the numerical columns
+        for col in self.num_cols:
+            valid_data = X[col].dropna()
+            self.values_to_fill[col] = valid_data.max() + 1
+            X[col] = X[col].fillna(self.values_to_fill[col])
+            self.woe_dict[col], self.bin_edges[col] = self._calculate_woe_numerical(X, col, y, event_rate, non_event_rate)
             
-        for column in self.woe_dict:
-            if column in X_transformed.columns:
-                # Handle categorical data
-                if X_transformed[column].dtype.name == 'category' or isinstance(X_transformed[column].iloc[0], str):
-                    # Add default WoE category if needed
-                    if X_transformed[column].dtype.name == 'category':
-                        X_transformed[column] = X_transformed[column].cat.add_categories([self.default_woe])
+            # Calculate WoE and save into dictionary
+            self.woe_dict[col] = self._calculate_woe_numerical(X, col, y, event_rate, non_event_rate)
 
-                    X_transformed[column] = X_transformed[column].map(self.woe_dict[column]).fillna(self.default_woe)
-            else:
-                # If column is not in test data, create it with default WoE value
-                X_transformed[column] = self.default_woe
+        # Loop over the categorical columns
+        for col in self.cat_cols:
+            # Replace nan with 'Missing'
+            X[col] = X[col].cat.add_categories('Missing')
+            X[col] = X[col].fillna('Missing')
 
-        return X_transformed
+            # Calculate WoE and save into dictionary
+            self.woe_dict[col] = self._calculate_woe(X, col, y, event_rate, non_event_rate)
+
+        return self
+
+    def transform(self, df):
+        X = df.copy()
+
+        # Loop over the numerical columns
+        for col in self.num_cols:
+            X[col] = X[col].fillna(self.values_to_fill[col])
+            
+            # Check if self.woe_dict[col] is a tuple
+            woe_dict, bin_edges = self.woe_dict[col]
+
+            # Ensure consistent bin edges during transformation
+            binned_col = pd.cut(X[col], bins=bin_edges, duplicates='drop', include_lowest=True)
+            
+            # Map values to WoE
+            X[col] = binned_col.map(woe_dict)
+
+
+        # Loop over the categorical columns
+        for col in self.cat_cols:
+            # Fill missing values with 'Missing'
+            X[col] = X[col].cat.add_categories('Missing')
+            X[col] = X[col].fillna('Missing')
+
+            # Map values to WoE
+            X[col] = X[col].map(self.woe_dict[col])
+
+        # Drop the target column
+        X = X.drop('y', axis=1, errors='ignore')
+
+        return X
 
 def drop_missing(df, threshold):
     cols_to_drop = []
