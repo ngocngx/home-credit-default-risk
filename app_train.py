@@ -72,21 +72,21 @@ for col in days_cols:
 df = df.replace(['XNA', 'Unknown', 'not specified'], np.nan)
 print(f'df shape: {df.shape}')
 
-# Missing Imputer
-missing_cols = [col for col in df.columns if df[col].isnull().any()]
-new_cols = [col + '_missing' for col in missing_cols]
-print(f'Number of missing columns: {len(missing_cols)}')
+# # Missing Imputer
+# missing_cols = [col for col in df.columns if df[col].isnull().any()]
+# new_cols = [col + '_missing' for col in missing_cols]
+# print(f'Number of missing columns: {len(missing_cols)}')
 
-# MissingIndicator
-mi = MissingIndicator()
-mi.fit(df)
-new_df = pd.DataFrame(mi.transform(df), columns=new_cols, 
-                      index=df.index)
-print(f'new_df shape: {new_df.shape}')
+# # MissingIndicator
+# mi = MissingIndicator()
+# mi.fit(df)
+# new_df = pd.DataFrame(mi.transform(df), columns=new_cols, 
+#                       index=df.index)
+# print(f'new_df shape: {new_df.shape}')
 
-# Concat
-df = pd.concat([df, new_df], axis=1)
-print(f'df shape: {df.shape}')
+# # Concat
+# df = pd.concat([df, new_df], axis=1)
+# print(f'df shape: {df.shape}')
 
 # Create features
 df = create_features(df)
@@ -102,9 +102,9 @@ y = train['TARGET']
 train = train.drop('TARGET', axis=1)
 test = test.drop('TARGET', axis=1)
 
-# # Binning numerical features
-# print('Binning numerical features')
-# num_cols = [col for col in train.columns if train[col].dtype != 'object']
+# Astype into category
+cat_cols = train.select_dtypes('object').columns
+train[cat_cols] = train[cat_cols].astype('category')
 
 # WoETransformer
 print('WoETransformer')
