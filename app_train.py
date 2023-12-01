@@ -105,20 +105,25 @@ test = test.drop('TARGET', axis=1)
 # Astype into category
 cat_cols = train.select_dtypes('object').columns
 train[cat_cols] = train[cat_cols].astype('category')
+test[cat_cols] = test[cat_cols].astype('category')
+
+# Drop columns with only one unique value
+print('Drop columns with only one unique value')
+cols_to_drop = [col for col in train.columns if train[col].nunique() == 1]
+train.drop(cols_to_drop, axis=1, inplace=True)
+test.drop(cols_to_drop, axis=1, inplace=True)
+print(f'train shape: {train.shape}')
+print(f'test shape: {test.shape}')
 
 # WoETransformer
 print('WoETransformer')
-woe_transformer = WoETransformer()
+woe_transformer = WoETransformer(bins=40)
 woe_transformer.fit(train, y)
 
 train = woe_transformer.transform(train)
 test = woe_transformer.transform(test)
 print(f'train shape: {train.shape}')
 print(f'test shape: {test.shape}')
-
-# Replace inf
-train = train.replace([np.inf, -np.inf], np.nan)
-test = test.replace([np.inf, -np.inf], np.nan)
 
 # Impute missing values
 print('Impute missing values')
@@ -128,10 +133,10 @@ test = pd.DataFrame(imputer.transform(test), columns=test.columns, index=test.in
 print("Number of nulls in train: ", np.isnan(train).sum().sum())
 print("Number of nulls in test: ", np.isnan(test).sum().sum())
 
-# Select features
-selected_features = select_features_lightgbm(train, y, threshold=0.001)
-train = train[selected_features.index]
-test = test[selected_features.index]
+# # Select features
+# selected_features = select_features_lightgbm(train, y, threshold=0.001)
+# train = train[selected_features.index]
+# test = test[selected_features.index]
 
 print("Final train shape: ", train.shape)
 print("Final test shape: ", test.shape)

@@ -7,52 +7,58 @@ from sklearn.impute import MissingIndicator
 from sklearn.metrics import roc_auc_score
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.feature_selection import SelectFromModel
-
-def select_feature_var(df, threshold=0.001):
-    print('Initial shape: {}'.format(df.shape))
-    for col in df.select_dtypes('object').columns:
-        value_counts = df[col].value_counts(normalize=True)
-        if value_counts.var() < threshold:
-            df.drop(col, axis=1, inplace=True)
-
-    for col in df.select_dtypes('number').columns:
-        if df[col].var() < threshold:
-            df.drop(col, axis=1, inplace=True)
-    print('Final shape: {}'.format(df.shape))
-    return df
-
+from functions import *
 
 # Load data
 previous = pd.read_csv('raw-data/dseb63_previous_application.csv')
+previous.set_index('SK_ID_CURR', inplace=True)
 
-# Select features
-previous = select_feature_var(previous)
-
-# Missing indicator
-# Identify columns with missing values
-missing_columns = previous.columns[previous.isnull().any()].tolist()
-new_cols = [col + '_MISSING' for col in missing_columns]
-
-# Create missing indicator
-indicator = MissingIndicator(features='missing-only')
-indicator.fit(previous[missing_columns])
-indicator = pd.DataFrame(indicator.transform(previous[missing_columns]),
-                         columns=new_cols, index=previous.index)
-
-# Concatenate with original data
-previous = pd.concat([previous, indicator], axis=1)
-
-# Encode categorical features
-previous = pd.get_dummies(previous, drop_first=True)
-
-# Aggregate features by SK_ID_CURR
-previous_agg = previous.groupby('SK_ID_CURR').mean()
-
-# Flatten column names
-# previous_agg.columns = ['_'.join(col).strip() for col in previous_agg.columns.values]
+# Create features
 
 # Drop SK_ID_PREV
-previous_agg.drop(['SK_ID_PREV'], axis=1, inplace=True)
+previous.drop(['SK_ID_PREV'], axis= 1, inplace = True)
 
-# Save data
-previous_agg.to_csv('processed-data/processed_previous.csv', index=True)
+# Merge with target
+print('Merge with target')
+target = pd.read_csv('raw-data/dseb63_application_train.csv', usecols=['SK_ID_CURR', 'TARGET'])
+target.set_index('SK_ID_CURR', inplace=True)
+
+previous = previous.merge(target, left_index=True, right_index=True, how='left')
+print('After merge: {}'.format(previous.shape))
+
+# Split train and test
+prev_train = previous[previous['TARGET'].notnull()]
+y_train = prev_train['TARGET']
+prev_train.drop('TARGET', axis=1, inplace=True)
+
+prev_test = previous[previous['TARGET'].isnull()]
+prev_test.drop('TARGET', axis=1, inplace=True)
+
+# Astype to category
+print('Astype to category')
+cat_cols = prev_train.select_dtypes('object').columns
+prev_train[cat_cols] = prev_train[cat_cols].astype('category')
+prev_test[cat_cols] = prev_test[cat_cols].astype('category')
+
+# WoETransformer
+woe_transformer = WoETransformer(bins=20)
+woe_transformer.fit(prev_train, y_train)
+
+# Transform
+prev_train = woe_transformer.transform(prev_train)
+prev_test = woe_transformer.transform(prev_test)
+
+# Concat
+prev = pd.concat([prev_train, prev_test], axis=0)
+
+# Astype to float
+print('Astype to float')
+prev = prev.astype(float)
+
+# Aggregate
+print('Aggregate')
+prev_agg = prev.groupby('SK_ID_CURR').agg(['mean', 'var'])
+prev_agg.columns = ['_'.join(col).strip() for col in prev_agg.columns.values]
+
+# Save
+prev_agg.to_csv('processed-data/processed_previous_application.csv')

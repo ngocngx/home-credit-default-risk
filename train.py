@@ -28,7 +28,7 @@ test['is_train'] = 0
 data = pd.concat([train, test], axis=0)
 
 # Merge with previous application
-previous_application = pd.read_csv('processed-data/dseb63_previous_application_agg-2.csv')
+previous_application = pd.read_csv('processed-data/processed_previous_application.csv')
 print(f'Previous application shape: {previous_application.shape}')
 data = data.merge(previous_application, how='left', on='SK_ID_CURR')
 
@@ -75,7 +75,7 @@ train = train.astype('float64')
 test = test.astype('float64')
 
 # Feature selection
-selected_features = select_features_lightgbm(train, target, threshold=0.01)
+selected_features = select_features_lightgbm(train, target, threshold=0.2)
 print(f'Number of selected features: {len(selected_features)}')
 train = train[selected_features.index]
 test = test[selected_features.index]
@@ -96,7 +96,7 @@ test = pd.DataFrame(test_scaled, index=test.index, columns=test.columns)
 
 # Train
 log_reg = LogisticRegression(class_weight='balanced', solver='newton-cholesky',
-                             max_iter=100)
+                             max_iter=200, C=0.1)
 
 # Cross validate
 print('Cross validating...')
