@@ -24,7 +24,8 @@ def create_features(df):
         'BUREAU_IS_DPD': df['CREDIT_DAY_OVERDUE'] > 0,
         'BUREAU_IS_DPD_OVER60': df['CREDIT_DAY_OVERDUE'] > 60,
         'BUREAU_IS_DPD_OVER120': df['CREDIT_DAY_OVERDUE'] > 120,
-        
+        'DEBT_TO_INCOME_RATIO': df['AMT_CREDIT_SUM_DEBT'] / df['AMT_INCOME_TOTAL']
+    
     }
 
     df = pd.concat([df, pd.DataFrame(new_features)], axis=1)
@@ -71,7 +72,8 @@ def bureau_bb(bureau, bb):
         'BUREAU_CREDIT_DEBT_RATIO': ['min', 'max', 'mean'],
         'DEBT_CREDIT_DIFF': ['min', 'max', 'mean'],
         'BUREAU_IS_DPD': ['mean', 'sum'],
-        'BUREAU_IS_DPD_OVER120': ['mean', 'sum']
+        'BUREAU_IS_DPD_OVER120': ['mean', 'sum'],
+        'DEBT_TO_INCOME_RATIO': ['min', 'max', 'mean']
         }
 
     # Bureau and bureau_balance categorical features
