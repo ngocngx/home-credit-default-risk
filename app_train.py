@@ -6,6 +6,7 @@ from sklearn.impute import MissingIndicator, SimpleImputer
 
 from sklearn.decomposition import PCA
 from functions import *
+from optbinning import OptimalBinning, Scorecard, BinningProcess
 
 
 def create_features(df):
@@ -28,12 +29,6 @@ def create_features(df):
         'CAR_TO_BIRTH_RATIO': df['OWN_CAR_AGE'] / df['DAYS_BIRTH'],
         'CAR_TO_EMPLOYED_RATIO': df['OWN_CAR_AGE'] / df['DAYS_EMPLOYED'],
         'PHONE_TO_BIRTH_RATIO': df['DAYS_LAST_PHONE_CHANGE'] / df['DAYS_BIRTH'],
-        # Change in income
-        'CHANGE_INCOME': df.groupby('SK_ID_CURR')['AMT_INCOME_TOTAL'].diff().fillna(0),
-        # Change in credit
-        'CHANGE_CREDIT': df.groupby('SK_ID_CURR')['AMT_CREDIT'].diff().fillna(0),
-        # Change in annuity
-        'CHANGE_ANNUITY': df.groupby('SK_ID_CURR')['AMT_ANNUITY'].diff().fillna(0),
         # Loan Utilization Ratio
         'LOAN_UR': df['AMT_CREDIT'] / df['AMT_GOODS_PRICE'],
         # Age
@@ -72,22 +67,6 @@ for col in days_cols:
 df = df.replace(['XNA', 'Unknown', 'not specified'], np.nan)
 print(f'df shape: {df.shape}')
 
-# # Missing Imputer
-# missing_cols = [col for col in df.columns if df[col].isnull().any()]
-# new_cols = [col + '_missing' for col in missing_cols]
-# print(f'Number of missing columns: {len(missing_cols)}')
-
-# # MissingIndicator
-# mi = MissingIndicator()
-# mi.fit(df)
-# new_df = pd.DataFrame(mi.transform(df), columns=new_cols, 
-#                       index=df.index)
-# print(f'new_df shape: {new_df.shape}')
-
-# # Concat
-# df = pd.concat([df, new_df], axis=1)
-# print(f'df shape: {df.shape}')
-
 # Create features
 df = create_features(df)
 
@@ -102,41 +81,32 @@ y = train['TARGET']
 train = train.drop('TARGET', axis=1)
 test = test.drop('TARGET', axis=1)
 
-# Astype into category
-cat_cols = train.select_dtypes('object').columns
-train[cat_cols] = train[cat_cols].astype('category')
-test[cat_cols] = test[cat_cols].astype('category')
+# Replace inf values
+train.replace([np.inf, -np.inf], np.nan, inplace=True)
+test.replace([np.inf, -np.inf], np.nan, inplace=True)
 
-# Drop columns with only one unique value
-print('Drop columns with only one unique value')
-cols_to_drop = [col for col in train.columns if train[col].nunique() == 1]
-train.drop(cols_to_drop, axis=1, inplace=True)
-test.drop(cols_to_drop, axis=1, inplace=True)
-print(f'train shape: {train.shape}')
-print(f'test shape: {test.shape}')
+# Binning
+cat_cols = train.select_dtypes(include='object').columns.tolist()
+num_cols = train.select_dtypes(exclude='object').columns.tolist()
 
-# WoETransformer
-print('WoETransformer')
-woe_transformer = WoETransformer(bins=40)
-woe_transformer.fit(train, y)
+variable_names = train.columns.tolist()
+binning_process = BinningProcess(variable_names, categorical_variables=cat_cols, 
+                                 max_n_prebins=30)
 
-train = woe_transformer.transform(train)
-test = woe_transformer.transform(test)
-print(f'train shape: {train.shape}')
-print(f'test shape: {test.shape}')
+binning_process.fit(train, y)
 
-# Impute missing values
-print('Impute missing values')
-imputer = SimpleImputer(strategy='most_frequent')
-train = pd.DataFrame(imputer.fit_transform(train), columns=train.columns, index=train.index)
-test = pd.DataFrame(imputer.transform(test), columns=test.columns, index=test.index)
-print("Number of nulls in train: ", np.isnan(train).sum().sum())
-print("Number of nulls in test: ", np.isnan(test).sum().sum())
+# Transform train and test
+train_binned = binning_process.transform(train, metric_missing=0.05)
+train_binned.index = train.index
+test_binned = binning_process.transform(test, metric_missing=0.05)
+test_binned.index = test.index
 
-# # Select features
-# selected_features = select_features_lightgbm(train, y, threshold=0.001)
-# train = train[selected_features.index]
-# test = test[selected_features.index]
+# Select features
+selected_features = select_features_lightgbm(train_binned, y, threshold=0.001)
+train = train_binned[selected_features.index]
+test = test_binned[selected_features.index]
+print(f'Number of selected features: {len(selected_features)}')
+print(f'Top 10 selected features: {selected_features.index[:10].tolist()}')
 
 print("Final train shape: ", train.shape)
 print("Final test shape: ", test.shape)

@@ -7,6 +7,7 @@ from sklearn.model_selection import cross_val_score
 from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import MinMaxScaler, RobustScaler, StandardScaler
 from sklearn.decomposition import PCA
+from sklearn.feature_selection import RFE
 
 # Load data
 train = pd.read_csv('processed-data/application_train.csv')
@@ -77,6 +78,7 @@ test = test.astype('float64')
 # Feature selection
 selected_features = select_features_lightgbm(train, target, threshold=0.2)
 print(f'Number of selected features: {len(selected_features)}')
+print('Top 10 features:', selected_features.sort_values(ascending=False)[:10].index.tolist())
 train = train[selected_features.index]
 test = test[selected_features.index]
 
@@ -95,8 +97,7 @@ train = pd.DataFrame(train_scaled, index=train.index, columns=train.columns)
 test = pd.DataFrame(test_scaled, index=test.index, columns=test.columns)
 
 # Train
-log_reg = LogisticRegression(class_weight='balanced', solver='newton-cholesky',
-                             max_iter=200, C=0.1)
+log_reg = LogisticRegression(class_weight='balanced', solver='newton-cholesky', max_iter=500)
 
 # Cross validate
 print('Cross validating...')

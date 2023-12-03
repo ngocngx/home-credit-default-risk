@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 from sklearn.impute import SimpleImputer, MissingIndicator
 from functions import *
+from optbinning import OptimalBinning, Scorecard, BinningProcess
 
 def create_features(df):
     new_features = {
@@ -55,37 +56,38 @@ cc_agg['CC_COUNT'] = cc.groupby('SK_ID_CURR').size()
 # Replace inf with nan
 cc_agg = cc_agg.replace([np.inf, -np.inf], np.nan)
 
-# Print shape after one-hot encoding
-print('After one-hot encoding: {}'.format(cc_agg.shape))
-print('Null values: {}'.format(cc_agg.isnull().values.sum()))
-
-# Add missing indicator
-missing_cols = [col for col in cc_agg.columns if cc_agg[col].isnull().any()]
-new_cols = [col + '_MISSING' for col in missing_cols]
-mi = MissingIndicator()
-mi.fit(cc_agg[missing_cols])
-missing_df = pd.DataFrame(mi.transform(cc_agg[missing_cols]), columns=new_cols, index=cc_agg.index)
-cc_agg = pd.concat([cc_agg, missing_df], axis=1)
-print('After missing indicator: {}'.format(cc_agg.shape))
-
-# Merge with target
-cc_copy = cc_agg.copy()
+# Target
 target = pd.read_csv('processed-data/target.csv')
-cc_agg = target.merge(cc_agg, how='left', on='SK_ID_CURR')
-cc_agg.set_index('SK_ID_CURR', inplace=True)
+target.set_index('SK_ID_CURR', inplace=True)
 
-# Fill missing values
-imputer = SimpleImputer(strategy='mean')
-cc_agg = pd.DataFrame(imputer.fit_transform(cc_agg), columns=cc_agg.columns,
-                      index=cc_agg.index)
-print('Null values: {}'.format(cc_agg.isnull().values.sum()))
+cc_train = cc_agg[cc_agg.index.isin(target.index)]
+y_train = target[target.index.isin(cc_agg.index)]['TARGET']
+
+cc_test = cc_agg[~cc_agg.index.isin(target.index)]
+
+# Binning process
+variable_names = cc_train.columns.tolist()
+binning_process = BinningProcess(variable_names, categorical_variables=cat_cols, 
+                                 max_n_prebins=30)
+binning_process.fit(cc_train, y_train)
+
+# Transform train and test
+cc_train_binned = binning_process.transform(cc_train, metric_missing=0.05)
+cc_train_binned.index = cc_train.index
+cc_test_binned = binning_process.transform(cc_test, metric_missing=0.05)
+cc_test_binned.index = cc_test.index
 
 # Select features
-selected_features = select_features_rf(cc_agg.drop(['TARGET'], axis=1), 
-                                       cc_agg['TARGET'], threshold=0.0005)
-print('Number of selected features: {}'.format(len(selected_features.index.tolist())))
-cc = cc_copy[selected_features.index.tolist()]
+selected_features = select_features_lightgbm(cc_train_binned, y_train, threshold=0.01)
+print('Number of selected features: {}'.format(len(selected_features)))
+print('Top 10 selected features: {}'.format(selected_features.sort_values(ascending=False)[:10].index.tolist()))
+cc_train = cc_train_binned[selected_features.index]
+cc_test = cc_test_binned[selected_features.index]
+
+# Concat train and test
+cc = pd.concat([cc_train, cc_test], axis=0)
 
 # Save
+print('Saving...')
 cc.to_csv('processed-data/processed_credit_card_balance.csv')
-print(cc.head())
+print('Done.')
