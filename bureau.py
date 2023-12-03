@@ -1,135 +1,109 @@
-import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
-import seaborn as sns
-
-from sklearn.linear_model import LogisticRegression
-from sklearn.preprocessing import OneHotEncoder
-from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import MinMaxScaler
-from sklearn.impute import SimpleImputer
+import pandas as pd
+from sklearn.impute import SimpleImputer, MissingIndicator
 from functions import *
+from optbinning import OptimalBinning, Scorecard, BinningProcess
 
-
-def create_features(df):
+def create_feature(df):
     new_features = {
-        'CREDIT_DURATION': df['DAYS_CREDIT'] - df['DAYS_CREDIT_ENDDATE'],
-        'ENDDATE_DIF': df['DAYS_CREDIT_ENDDATE'] - df['DAYS_ENDDATE_FACT'],
-        'DEBT_PERCENTAGE': df['AMT_CREDIT_SUM'] / df['AMT_CREDIT_SUM_DEBT'],
-        'DEBT_CREDIT_DIFF': df['AMT_CREDIT_SUM'] - df['AMT_CREDIT_SUM_DEBT'],
-        'CREDIT_TO_ANNUITY_RATIO': df['AMT_CREDIT_SUM'] / df['AMT_ANNUITY'],
-        'BUREAU_CREDIT_FACT_DIFF': df['DAYS_CREDIT'] - df['DAYS_ENDDATE_FACT'],
-        'BUREAU_CREDIT_ENDDATE_DIFF': df['DAYS_CREDIT'] - df['DAYS_CREDIT_ENDDATE'],
-        'BUREAU_CREDIT_DEBT_RATIO': df['AMT_CREDIT_SUM_DEBT'] / df['AMT_CREDIT_SUM'],
-        'BUREAU_IS_DPD': df['CREDIT_DAY_OVERDUE'] > 0,
-        'BUREAU_IS_DPD_OVER60': df['CREDIT_DAY_OVERDUE'] > 60,
-        'BUREAU_IS_DPD_OVER120': df['CREDIT_DAY_OVERDUE'] > 120,
-        'DEBT_TO_INCOME_RATIO': df['AMT_CREDIT_SUM_DEBT'] / df['AMT_INCOME_TOTAL']
-    
+    'CREDIT_DURATION': df['DAYS_CREDIT'] - df['DAYS_CREDIT_ENDDATE'],
+    'ENDDATE_DIF': df['DAYS_CREDIT_ENDDATE'] - df['DAYS_ENDDATE_FACT'],
+    'DEBT_PERCENTAGE': df['AMT_CREDIT_SUM'] / df['AMT_CREDIT_SUM_DEBT'],
+    'DEBT_CREDIT_DIFF': df['AMT_CREDIT_SUM'] - df['AMT_CREDIT_SUM_DEBT'],
+    'CREDIT_TO_ANNUITY_RATIO': df['AMT_CREDIT_SUM'] / df['AMT_ANNUITY'],
+    'BUREAU_CREDIT_FACT_DIFF': df['DAYS_CREDIT'] - df['DAYS_ENDDATE_FACT'],
+    'BUREAU_CREDIT_ENDDATE_DIFF': df['DAYS_CREDIT'] - df['DAYS_CREDIT_ENDDATE'],
+    'BUREAU_CREDIT_DEBT_RATIO': df['AMT_CREDIT_SUM_DEBT'] / df['AMT_CREDIT_SUM'],
+    'BUREAU_IS_DPD': df['CREDIT_DAY_OVERDUE'] > 0,
+    'BUREAU_IS_DPD_OVER60': df['CREDIT_DAY_OVERDUE'] > 60,
+    'BUREAU_IS_DPD_OVER120': df['CREDIT_DAY_OVERDUE'] > 120,
+    # DAYS_CREDIT_mean
+    'DAYS_CREDIT_mean': df.groupby('SK_ID_CURR')['DAYS_CREDIT'].mean(),
+    # last_active_DAYS_CREDIT
+    'last_active_DAYS_CREDIT': df.groupby('SK_ID_CURR')['DAYS_CREDIT'].last(),
+    # Credit ratio
+    'CREDIT_RATIO': df['AMT_CREDIT_SUM'] / df['AMT_CREDIT_SUM'],
     }
 
     df = pd.concat([df, pd.DataFrame(new_features)], axis=1)
     return df
 
-def bureau_bb(bureau, bb):
-
-    bureau = create_features(bureau)
-
-    bb, bb_cat = one_hot_encoder(bb, nan_as_category=True)
-    bureau, bureau_cat = one_hot_encoder(bureau, nan_as_category=True)
-
-    # Bureau balance: Perform aggregations and merge with bureau.csv
-    bb_aggregations = {'MONTHS_BALANCE': ['min', 'max', 'size', 'mean']}
-    for col in bb_cat:
-        bb_aggregations[col] = ['mean']
-
-    #Status of Credit Bureau loan during the month
-    bb_agg = bb.groupby('SK_ID_BUREAU').agg(bb_aggregations)
-    bb_agg.columns = pd.Index([e[0] + "_" + e[1].upper() for e in bb_agg.columns.tolist()])
-    bureau = bureau.join(bb_agg, how='left', on='SK_ID_BUREAU')
-
-    # Bureau and bureau_balance numeric features
-    num_aggregations = {
-        'DAYS_CREDIT': ['min', 'max', 'mean', 'var'],
-        'DAYS_CREDIT_ENDDATE': ['min', 'max', 'mean'],
-        'DAYS_CREDIT_UPDATE': ['mean'],
-        'CREDIT_DAY_OVERDUE': ['max', 'mean', 'min'],
-        'AMT_CREDIT_MAX_OVERDUE': ['mean', 'max'],
-        'AMT_CREDIT_SUM': ['max', 'mean', 'sum'],
-        'AMT_CREDIT_SUM_DEBT': ['max', 'mean', 'sum'],
-        'AMT_CREDIT_SUM_OVERDUE': ['mean', 'max', 'sum'],
-        'AMT_CREDIT_SUM_LIMIT': ['mean', 'sum'],
-        'AMT_ANNUITY': ['max', 'mean', 'sum'],
-        'CNT_CREDIT_PROLONG': ['sum'],
-        'MONTHS_BALANCE_MIN': ['min'],
-        'MONTHS_BALANCE_MAX': ['max'],
-        'MONTHS_BALANCE_SIZE': ['mean', 'sum'],
-        'SK_ID_BUREAU': ['count'],
-        'DAYS_ENDDATE_FACT': ['min', 'max', 'mean'],
-        'ENDDATE_DIF': ['min', 'max', 'mean'],
-        'BUREAU_CREDIT_FACT_DIFF': ['min', 'max', 'mean'],
-        'BUREAU_CREDIT_ENDDATE_DIFF': ['min', 'max', 'mean'],
-        'BUREAU_CREDIT_DEBT_RATIO': ['min', 'max', 'mean'],
-        'DEBT_CREDIT_DIFF': ['min', 'max', 'mean'],
-        'BUREAU_IS_DPD': ['mean', 'sum'],
-        'BUREAU_IS_DPD_OVER120': ['mean', 'sum'],
-        'DEBT_TO_INCOME_RATIO': ['min', 'max', 'mean']
-        }
-
-    # Bureau and bureau_balance categorical features
-    cat_aggregations = {}
-    for cat in bureau_cat: 
-        cat_aggregations[cat] = ['mean']
-
-    for cat in bb_cat: 
-        cat_aggregations[cat + "_MEAN"] = ['mean']
-
-    bureau_agg = bureau.groupby('SK_ID_CURR').agg({**num_aggregations, **cat_aggregations})
-    bureau_agg.columns = pd.Index(['BURO_' + e[0] + "_" + e[1].upper() for e in bureau_agg.columns.tolist()])
-
-    # Bureau: Active credits - using only numerical aggregations
-    active = bureau[bureau['CREDIT_ACTIVE_Active'] == 1]
-    active_agg = active.groupby('SK_ID_CURR').agg(num_aggregations)
-    active_agg.columns = pd.Index(['ACTIVE_' + e[0] + "_" + e[1].upper() for e in active_agg.columns.tolist()])
-    bureau_agg = bureau_agg.join(active_agg, how='left', on='SK_ID_CURR')
-
-    # Bureau: Closed credits - using only numerical aggregations
-    closed = bureau[bureau['CREDIT_ACTIVE_Closed'] == 1]
-    closed_agg = closed.groupby('SK_ID_CURR').agg(num_aggregations)
-    closed_agg.columns = pd.Index(['CLOSED_' + e[0] + "_" + e[1].upper() for e in closed_agg.columns.tolist()])
-    bureau_agg = bureau_agg.join(closed_agg, how='left', on='SK_ID_CURR')
-
-    print('"Bureau/Bureau Balance" final shape:', bureau_agg.shape)
-    return bureau_agg
-
 # Load data
 bureau = pd.read_csv('raw-data/dseb63_bureau.csv')
-bb = pd.read_csv('raw-data/dseb63_bureau_balance.csv')
-print('Initial shape of bureau: {}'.format(bureau.shape))
-print('Initial shape of bureau_balance: {}'.format(bb.shape))
+bureau_balance = pd.read_csv('raw-data/dseb63_bureau_balance.csv')
 
 # Aggregations for bureau_balance
-bureau_agg = bureau_bb(bureau, bb)
+bureau_balance = pd.get_dummies(bureau_balance, columns=['STATUS'], dummy_na=True)
 
-# Replace all inf values with nan values
-bureau_agg.replace([np.inf, -np.inf], np.nan, inplace=True)
+bb_aggregations = bureau_balance.groupby('SK_ID_BUREAU').agg({
+    'MONTHS_BALANCE': ['min', 'max', 'size', 'mean'],
+    'STATUS_0': ['mean'],
+    'STATUS_1': ['mean'],
+    'STATUS_2': ['mean'],
+    'STATUS_3': ['mean'],
+    'STATUS_4': ['mean'],
+    'STATUS_5': ['mean'],
+    'STATUS_C': ['mean', 'count'],
+    'STATUS_X': ['mean', 'count'],
+    'STATUS_nan': ['mean', 'count'],
+})
 
-# Merge with target
-bureau_agg_copy = bureau_agg.copy()
+# Rename columns
+bb_aggregations.columns = pd.Index([e[0] + "_" + e[1].upper() for e in bb_aggregations.columns.tolist()])
+
+# Create features for bureau
+bureau = create_feature(bureau)
+
+# Merge bureau_balance with bureau
+bureau = bureau.merge(bb_aggregations, how='left', on='SK_ID_BUREAU')
+bureau.drop('SK_ID_BUREAU', axis=1, inplace=True)
+bureau.set_index('SK_ID_CURR', inplace=True)
+
+# Replace positive inf with nan
+bureau = bureau.replace([np.inf, -np.inf], np.nan)
+
+# One-hot encoding for categorical columns with get_dummies
+bureau, cat_cols = one_hot_encoder(bureau, nan_as_category= True)
+print('After one-hot encoding: {}'.format(bureau.shape))
+
+# Aggregate
+bureau_agg = bureau.groupby('SK_ID_CURR').agg(['min', 'max', 'mean', 'sum', 'var'])
+bureau_agg.columns = pd.Index(['BURO_' + e[0] + "_" + e[1].upper() for e in bureau_agg.columns.tolist()])
+bureau_agg['BUR_COUNT'] = bureau.groupby('SK_ID_CURR').size()
+print('After aggregation: {}'.format(bureau_agg.shape))
+
+# Target
 target = pd.read_csv('processed-data/target.csv')
-bureau_agg = target.merge(bureau_agg, how='left', on='SK_ID_CURR')
-# bureau_agg.set_index('SK_ID_CURR', inplace=True)
+target.set_index('SK_ID_CURR', inplace=True)
+y_train = target[target.index.isin(bureau_agg.index)]['TARGET']
+
+bureau_train = bureau_agg[bureau_agg.index.isin(target.index)]
+bureau_test = bureau_agg[~bureau_agg.index.isin(target.index)]
+
+# Binning process
+variable_names = bureau_train.columns.tolist()
+binning_process = BinningProcess(variable_names)
+binning_process.fit(bureau_train, y_train)
+
+# Transform train and test
+bureau_train_binned = binning_process.transform(bureau_train)
+bureau_train_binned.index = bureau_train.index
+bureau_test_binned = binning_process.transform(bureau_test)
+bureau_test_binned.index = bureau_test.index
+
+# Sanitize columns
+bureau_train_binned = sanitize_columns(bureau_train_binned)
+bureau_test_binned = sanitize_columns(bureau_test_binned)
 
 # Select features
-selected_features = select_features_xgboost(bureau_agg.drop(['SK_ID_CURR', 'TARGET'], axis=1), bureau_agg['TARGET'])
-selected_features = selected_features.index.tolist()
-bureau_agg = bureau_agg_copy[selected_features]
-print('Number of features selected: {}'.format(len(selected_features) - 2))
+selected_features = select_features_lightgbm(bureau_train_binned, y_train, threshold=1)
+print('Number of selected features: {}'.format(len(selected_features)))
+print('Top 10 selected features: {}'.format(selected_features.sort_values(ascending=False)[:10].index.tolist()))
+bureau_train = bureau_train_binned[selected_features.index]
+bureau_test = bureau_test_binned[selected_features.index]
 
-# Fill missing values
-imputer = SimpleImputer(strategy='mean')
-bureau_agg = pd.DataFrame(imputer.fit_transform(bureau_agg), columns=bureau_agg.columns, index=bureau_agg.index)
+# Concat train and test
+bureau = pd.concat([bureau_train, bureau_test], axis=0)
 
-# Save data
-bureau_agg.to_csv('processed-data/processed_bureau_2511.csv', index=True)
-print('Final shape of bureau: {}'.format(bureau_agg.shape))
+# Save
+bureau.to_csv('processed-data/processed_bureau.csv')

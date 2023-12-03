@@ -44,7 +44,7 @@ print(f'Installments payments shape: {installments_payments.shape}')
 data = data.merge(installments_payments, how='left', on='SK_ID_CURR')
 
 # Merge with bureau
-bureau = pd.read_csv('processed-data/processed_bureau_2511.csv')
+bureau = pd.read_csv('processed-data/processed_bureau.csv')
 print(f'Bureau shape: {bureau.shape}')
 data = data.merge(bureau, how='left', on='SK_ID_CURR')
 
@@ -76,7 +76,7 @@ train = train.astype('float64')
 test = test.astype('float64')
 
 # Feature selection
-selected_features = select_features_lightgbm(train, target, threshold=0.2)
+selected_features = select_features_lightgbm(train, target, threshold=0.5)
 print(f'Number of selected features: {len(selected_features)}')
 print('Top 10 features:', selected_features.sort_values(ascending=False)[:10].index.tolist())
 train = train[selected_features.index]
@@ -96,8 +96,14 @@ test_scaled = standard_scaler.transform(test_imputed)
 train = pd.DataFrame(train_scaled, index=train.index, columns=train.columns)
 test = pd.DataFrame(test_scaled, index=test.index, columns=test.columns)
 
+# # Concat and save
+# train_merged = pd.concat([train, target], axis=1)
+# data_merged = pd.concat([train, test], axis=0)
+# data_merged.to_csv('processed-data/processed_data.csv')
+
 # Train
-log_reg = LogisticRegression(class_weight='balanced', solver='newton-cholesky', max_iter=500)
+log_reg = LogisticRegression(class_weight='balanced', solver='newton-cholesky', 
+                             max_iter=500, C=0.1)
 
 # Cross validate
 print('Cross validating...')
