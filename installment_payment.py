@@ -82,8 +82,7 @@ installments_test = installments_agg[~installments_agg.index.isin(target.index)]
 
 # Binning process
 variable_names = installments_train.columns.tolist()
-binning_process = BinningProcess(variable_names, categorical_variables=cat_cols, 
-                                 max_n_prebins=30)
+binning_process = BinningProcess(variable_names)
 binning_process.fit(installments_train, y_train)
 
 # Transform train and test

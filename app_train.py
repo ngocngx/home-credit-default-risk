@@ -35,8 +35,13 @@ def create_features(df):
         'AGE': df['DAYS_BIRTH'].apply(lambda x: -int(x / 365)),
         # Debt Burden Ratio
         'DEBT_BURDEN': df['AMT_ANNUITY'] / df['AMT_INCOME_TOTAL'],
-        # External Source Product:
-        'EXT_SOURCE_PROD': df['EXT_SOURCE_1'] * df['EXT_SOURCE_2'] * df['EXT_SOURCE_3']
+        # External Source
+        'EXT_SOURCE_PROD': df['EXT_SOURCE_1'] * df['EXT_SOURCE_2'] * df['EXT_SOURCE_3'],
+        'EXT_SOURCE_MEAN': df[['EXT_SOURCE_1', 'EXT_SOURCE_2', 'EXT_SOURCE_3']].mean(axis=1),
+        'EXT_SOURCE_STD': df[['EXT_SOURCE_1', 'EXT_SOURCE_2', 'EXT_SOURCE_3']].std(axis=1),
+        'EXT_SOURCE_WEIGHTED': df['EXT_SOURCE_1'] * 2 + df['EXT_SOURCE_2'] * 3 + df['EXT_SOURCE_3'] * 1,
+        'EXT_SOURCE_MIN': df[['EXT_SOURCE_1', 'EXT_SOURCE_2', 'EXT_SOURCE_3']].min(axis=1),
+        'EXT_SOURCE_MAX': df[['EXT_SOURCE_1', 'EXT_SOURCE_2', 'EXT_SOURCE_3']].max(axis=1),
     }
 
     # Add new columns to the DataFrame all at once

@@ -83,7 +83,7 @@ train = train[selected_features.index]
 test = test[selected_features.index]
 
 # Fill missing values
-imputer = SimpleImputer(strategy='most_frequent')
+imputer = SimpleImputer(strategy='mean')
 train_imputed = imputer.fit_transform(train)
 test_imputed = imputer.transform(test)
 
@@ -103,7 +103,7 @@ test = pd.DataFrame(test_scaled, index=test.index, columns=test.columns)
 
 # Train
 log_reg = LogisticRegression(class_weight='balanced', solver='newton-cholesky', 
-                             max_iter=500, C=0.1)
+                             max_iter=500, C=0.001)
 
 # Cross validate
 print('Cross validating...')

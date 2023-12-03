@@ -2,9 +2,8 @@ import pandas as pd
 
 from sklearn.model_selection import cross_val_score
 from sklearn.linear_model import LogisticRegression
-from sklearn.model_selection import GridSearchCV
-# optuna
-import optuna
+from sklearn.model_selection import GridSearchCV, train_test_split
+from sklearn.metrics import roc_auc_score
 
 # Load data
 data = pd.read_csv('processed-data/processed_data.csv')
@@ -19,32 +18,35 @@ train.drop('TARGET', axis=1, inplace=True)
 test.drop('TARGET', axis=1, inplace=True)
 
 # Tuning
-def objective(trial):
-    # Set parameters
-    params = {
-        'penalty': trial.suggest_categorical('penalty', ['l1', 'l2']),
-        'C': trial.suggest_loguniform('C', 1e-5, 1e+5),
-        'solver': trial.suggest_categorical('solver', ['liblinear', 'saga']),
-        'class_weight': trial.suggest_categorical('class_weight', ['balanced', None]),
-        'max_iter': trial.suggest_int('max_iter', 100, 5000),
-        'random_state': trial.suggest_int('random_state', 1, 9999),
-        'n_jobs': -1
-    }
 
-    # Create model
-    model = LogisticRegression(**params)
+# Split train data into training and validation sets
+X_train, X_val, y_train, y_val = train_test_split(train, target, test_size=0.2, random_state=42)
 
-    # Cross validation
-    score = cross_val_score(model, train, target, scoring='roc_auc', cv=5, n_jobs=-1).mean()
+# Define the parameter grid
+param_grid = {
+    'penalty': ['l1', 'l2'],
+    'C': [1e-3, 1, 100],
+    'solver' : ['saga', 'lbfgs', 'newton-cholesky'],
+    'class_weight': ['balanced', None],
+#     'max_iter': [100, 500, 1000, 2000, 5000],
+}
 
-    return score
+# Create the logistic regression model
+model = LogisticRegression()
+# Create the GridSearchCV object
+grid_search = GridSearchCV(model, param_grid, scoring='roc_auc', cv=5, n_jobs=-1)
 
-# Create study
-study = optuna.create_study(direction='maximize')
-study.optimize(objective, n_trials=100)
+# Fit the GridSearchCV object to the training data
+grid_search.fit(X_train, y_train)
 
-# Print result
-print('Number of finished trials:', len(study.trials))
-print('Best trial:', study.best_trial.params)
-print('Best score:', study.best_value)
-print('Best parameters:', study.best_params)
+# Print the best parameters and score
+print('Best parameters:', grid_search.best_params_)
+print('Best score:', grid_search.best_score_)
+
+# Evaluate the model on the validation set
+val_predictions = grid_search.predict_proba(X_val)[:, 1]
+val_auc = roc_auc_score(y_val, val_predictions)
+print('Validation AUC:', val_auc)
+
+# You can also access the best model from the grid search
+best_model = grid_search.best_estimator_
