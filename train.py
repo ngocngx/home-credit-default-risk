@@ -79,13 +79,13 @@ test = test.astype('float64')
 # Feature selection
 selected_features = select_features_lightgbm(train, target, threshold=0.1)
 print(f'Number of selected features: {len(selected_features)}')
-print('Top 10 features:', selected_features.sort_values(ascending=False)[:10].index.tolist())
+print('Top 10 features:', selected_features.sort_values(ascending=False)[:20].index.tolist())
 train = train[selected_features.index]
 test = test[selected_features.index]
 
 # Fill missing values
 print('Filling missing values...')
-imputer = SimpleImputer(strategy='constant', fill_value=0)
+imputer = SimpleImputer(strategy='mean')
 train_imputed = imputer.fit_transform(train)
 test_imputed = imputer.transform(test)
 
@@ -103,8 +103,8 @@ train_scaled = standard_scaler.fit_transform(train_imputed)
 test_scaled = standard_scaler.transform(test_imputed)
 
 # Convert to dataframe
-train = pd.DataFrame(index=train.index, data=train_scaled)
-test = pd.DataFrame(index=test.index, data=test_scaled)
+train = pd.DataFrame(index=train.index, data=train_scaled, columns=selected_features.index)
+test = pd.DataFrame(index=test.index, data=test_scaled, columns=selected_features.index)
 
 # Concat and save
 # train_merged = pd.concat([train, target], axis=1)
@@ -124,6 +124,7 @@ print(f'ROC AUC mean: {mean_score}, GINI: {gini_score}')
 
 # Fit
 model.fit(train, target)
+print('Top 20 features:', train.columns[np.argsort(model.coef_[0])[-20:]].tolist())
 
 # Predict
 y_pred = model.predict_proba(test)[:, 1]

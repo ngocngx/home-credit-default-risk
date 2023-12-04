@@ -6,7 +6,7 @@ from optbinning import OptimalBinning, Scorecard, BinningProcess
 
 def create_feature(df):
     new_features = {
-        'CNT_INSTALMENT_FUTURE': df['CNT_INSTALMENT'] - df['CNT_INSTALMENT_FUTURE'],
+        'CNT_INSTALMENT_DIFF': df['CNT_INSTALMENT'] - df['CNT_INSTALMENT_FUTURE'],
         'DPD': df['SK_DPD'] - df['SK_DPD_DEF'],
         'DPD_FLAG': df['SK_DPD'] > 0,
         'DPD_DEF_FLAG': df['SK_DPD_DEF'] > 0,
@@ -26,8 +26,25 @@ print('Initial shape: {}'.format(pos_cash.shape))
 pos_cash = create_feature(pos_cash)
 print('After creating features: {}'.format(pos_cash.shape))
 
-# Replace positive inf with nan
-pos_cash = pos_cash.replace([np.inf, -np.inf], np.nan)
+# Replace positive inf with max, negative inf with min
+pos_cash.replace([np.inf, -np.inf], [pos_cash.max(), pos_cash.min()], inplace=True)
+
+# Filter last month
+pos_cash_filter = pos_cash.sort_values(['SK_ID_PREV', 'MONTHS_BALANCE']).groupby(['SK_ID_CURR', 'SK_ID_PREV']).last()
+pos_cash_filter['COMPLETED_FLAG'] = pos_cash_filter['NAME_CONTRACT_STATUS'] == 'Completed'
+pos_cash_filter['COMPLETED_COUNT'] = pos_cash_filter.groupby('SK_ID_CURR')['COMPLETED_FLAG'].transform('sum')
+pos_cash_filter['COMPLETED_COUNT'] = pos_cash_filter['COMPLETED_COUNT'].fillna(0)
+pos_cash_filter['OVERDUE_FLAG'] = pos_cash_filter.apply(lambda x: x['SK_DPD_DEF'] > 0 and x['CNT_INSTALMENT_FUTURE'] > 0, axis=1)
+pos_cash_filter['OVERDUE_COUNT'] = pos_cash_filter.groupby('SK_ID_CURR')['OVERDUE_FLAG'].transform('sum')
+
+# One-hot encoding for categorical columns with get_dummies
+pos_cash_filter, cat_cols = one_hot_encoder(pos_cash_filter, nan_as_category= True)
+print('After one-hot encoding: {}'.format(pos_cash_filter.shape))
+
+# Aggregate
+pos_cash_filter_agg = pos_cash_filter.groupby('SK_ID_CURR').agg(['min', 'max', 'mean', 'var'])
+pos_cash_filter_agg.columns = pd.Index(['POS_FILTER_' + e[0] + "_" + e[1].upper() for e in pos_cash_filter_agg.columns.tolist()])
+print('After aggregation: {}'.format(pos_cash_filter_agg.shape))
 
 # One-hot encoding for categorical columns with get_dummies
 pos_cash, cat_cols = one_hot_encoder(pos_cash, nan_as_category= True)
@@ -35,10 +52,13 @@ print('After one-hot encoding: {}'.format(pos_cash.shape))
 
 # Aggregate
 pos_cash.drop('SK_ID_PREV', axis=1, inplace=True)
-pos_cash_agg = pos_cash.groupby('SK_ID_CURR').agg(['min', 'max', 'mean', 'sum', 'var'])
+pos_cash_agg = pos_cash.groupby('SK_ID_CURR').agg(['min', 'max', 'mean', 'var'])
 pos_cash_agg.columns = pd.Index(['POS_' + e[0] + "_" + e[1].upper() for e in pos_cash_agg.columns.tolist()])
 print('After aggregation: {}'.format(pos_cash_agg.shape))
 print('Null values: {}'.format(pos_cash_agg.isnull().values.sum()))
+
+# Merge with pos_cash_filter
+pos_cash_agg = pos_cash_agg.merge(pos_cash_filter_agg, how='left', on='SK_ID_CURR')
 
 # Check duplicated columns
 pos_cash_agg = pos_cash_agg.loc[:, ~pos_cash_agg.columns.duplicated()]
@@ -67,23 +87,29 @@ binning_process.fit(pos_cash_train, y_train)
 
 # Transform train and test
 pos_cash_train_binned = binning_process.transform(pos_cash_train, metric_missing=0.05)
+pos_cash_train_binned.columns = [pos_cash_train.columns.tolist()[i] + '_BINNED' for i in range(len(pos_cash_train.columns.tolist()))]
 pos_cash_train_binned.index = pos_cash_train.index
 pos_cash_test_binned = binning_process.transform(pos_cash_test, metric_missing=0.05)
+pos_cash_test_binned.columns = [pos_cash_test.columns.tolist()[i] + '_BINNED' for i in range(len(pos_cash_test.columns.tolist()))]
 pos_cash_test_binned.index = pos_cash_test.index
 
+# Merge original and binned
+pos_cash_train = pd.concat([pos_cash_train, pos_cash_train_binned], axis=1)
+pos_cash_test = pd.concat([pos_cash_test, pos_cash_test_binned], axis=1)
+
 # Sanitize columns
-pos_cash_train_binned = sanitize_columns(pos_cash_train_binned)
-pos_cash_test_binned = sanitize_columns(pos_cash_test_binned)
+pos_cash_train = sanitize_columns(pos_cash_train)
+pos_cash_test = sanitize_columns(pos_cash_test)
 
 # Select features
-selected_features = select_features_lightgbm(pos_cash_train_binned, y_train, threshold=1)
+selected_features = select_features_lightgbm(pos_cash_train, y_train, threshold=0.2)
 print('Number of selected features: {}'.format(len(selected_features)))
-print('Top 10 features:', selected_features.sort_values(ascending=False)[:10].index.tolist())
-pos_cash_train_binned = pos_cash_train_binned[selected_features.index]
-pos_cash_test_binned = pos_cash_test_binned[selected_features.index]
+print('Top 10 features:', selected_features.sort_values(ascending=False)[:20].index.tolist())
+pos_cash_train = pos_cash_train[selected_features.index]
+pos_cash_test = pos_cash_test[selected_features.index]
 
 # Concatenate train and test
-pos_cash = pd.concat([pos_cash_train_binned, pos_cash_test_binned], axis=0)
+pos_cash = pd.concat([pos_cash_train, pos_cash_test], axis=0)
 
 # Drop sk_id_prev
 cols_to_drop = [col for col in pos_cash.columns if 'SK_ID_PREV' in col]
