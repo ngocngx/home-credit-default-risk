@@ -27,6 +27,10 @@ def create_feature(df):
     'DAYS_CREDIT_mean': df.groupby('SK_ID_CURR')['DAYS_CREDIT'].mean(),
     # last_active_DAYS_CREDIT
     'last_active_DAYS_CREDIT': df.groupby('SK_ID_CURR')['DAYS_CREDIT'].last(),
+    # BUREAU_AVG_LOAN_12M
+    'BUREAU_AVG_LOAN_12M': df.groupby('SK_ID_CURR')['DAYS_CREDIT'].rolling(window=12).mean()
+    # BUREAU_PCT_HIGH_DEBT_RATIO
+    'BUREAU_PCT_HIGH_DEBT_RATIO': (df['AMT_CREDIT_SUM_DEBT'] > 0.5 * df['AMT_CREDIT_SUM']).mean()
     }
 
     df = pd.concat([df, pd.DataFrame(new_features)], axis=1)
