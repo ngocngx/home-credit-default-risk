@@ -18,8 +18,8 @@ def create_feature(df):
     'BUREAU_IS_DPD': df['CREDIT_DAY_OVERDUE'] > 0,
     'BUREAU_IS_DPD_OVER60': df['CREDIT_DAY_OVERDUE'] > 60,
     'BUREAU_IS_DPD_OVER120': df['CREDIT_DAY_OVERDUE'] > 120,
-    'DAYS_SINCE_FIRST_LOAN': pd.to_datetime(df['CREDIT_START_DATE']) - pd.to_datetime(df['DAYS_CREDIT'])
-).dt.days,
+    'UTILIZATION_RATIO': df['AMT_CREDIT_SUM_DEBT'] / df['AMT_CREDIT_SUM_LIMIT'],
+    'New_Loan_In_1Year': df[df['DAYS_CREDIT'] >= datetime.datetime.today() - timedelta(days=365)]['CREDIT_ACTIVE'].eq('Active').sum()
 
     # DAYS_CREDIT_mean
     'DAYS_CREDIT_mean': df.groupby('SK_ID_CURR')['DAYS_CREDIT'].mean(),
