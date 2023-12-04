@@ -280,7 +280,7 @@ def risk_groupanizer(dataframe, column_names, target_val=1, upper_limit_ratio=8.
             dataframe.drop(col, axis=1, inplace=True)
     return dataframe, list(set(dataframe.columns).difference(set(all_cols)))
 
-def select_feature_var_threshold(X, y, threshold=0.01):
+def select_feature_var_threshold(X, threshold=0.01):
     """
     Select features with variance threshold of value count
     """

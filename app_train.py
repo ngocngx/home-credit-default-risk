@@ -102,16 +102,25 @@ binning_process.fit(train, y)
 
 # Transform train and test
 train_binned = binning_process.transform(train, metric_missing=0.05)
+train_binned.columns = [f'{col}_BINNED' for col in train_binned.columns]
 train_binned.index = train.index
 test_binned = binning_process.transform(test, metric_missing=0.05)
+test_binned.columns = [f'{col}_BINNED' for col in test_binned.columns]
 test_binned.index = test.index
 
+# Concat original and binned
+train = train.select_dtypes('number')
+train = pd.concat([train, train_binned], axis=1)
+test = test.select_dtypes('number')
+test = pd.concat([test, test_binned], axis=1)
+print(f'Train shape: {train.shape}, Test shape: {test.shape}')
+
 # Select features
-selected_features = select_features_lightgbm(train_binned, y, threshold=0.001)
-train = train_binned[selected_features.index]
-test = test_binned[selected_features.index]
+selected_features = select_features_lightgbm(train, y, threshold=0.1)
+train = train[selected_features.index]
+test = train[selected_features.index]
 print(f'Number of selected features: {len(selected_features)}')
-print(f'Top 10 selected features: {selected_features.index[:10].tolist()}')
+print(f'Top 10 selected features: {selected_features.sort_values(ascending=False)[:10].index.tolist()}')
 
 print("Final train shape: ", train.shape)
 print("Final test shape: ", test.shape)

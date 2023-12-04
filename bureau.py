@@ -21,8 +21,6 @@ def create_feature(df):
     'DAYS_CREDIT_mean': df.groupby('SK_ID_CURR')['DAYS_CREDIT'].mean(),
     # last_active_DAYS_CREDIT
     'last_active_DAYS_CREDIT': df.groupby('SK_ID_CURR')['DAYS_CREDIT'].last(),
-    # Credit ratio
-    'CREDIT_RATIO': df['AMT_CREDIT_SUM'] / df['AMT_CREDIT_SUM'],
     }
 
     df = pd.concat([df, pd.DataFrame(new_features)], axis=1)
