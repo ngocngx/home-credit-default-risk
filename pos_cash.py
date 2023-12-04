@@ -3,6 +3,9 @@ import pandas as pd
 from sklearn.impute import SimpleImputer, MissingIndicator
 from functions import *
 from optbinning import OptimalBinning, Scorecard, BinningProcess
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import roc_auc_score
+from sklearn.preprocessing import StandardScaler
 
 def create_feature(df):
     new_features = {
@@ -108,6 +111,27 @@ print('Top 10 features:', selected_features.sort_values(ascending=False)[:20].in
 pos_cash_train = pos_cash_train[selected_features.index]
 pos_cash_test = pos_cash_test[selected_features.index]
 
+# # Fill missing values
+# print('Filling missing values...')
+# imputer = SimpleImputer(strategy='mean').set_output(transform="pandas")
+# pos_cash_train = imputer.fit_transform(pos_cash_train)
+# pos_cash_test = imputer.transform(pos_cash_test)
+
+# # Scaled
+# print('Scaling...')
+# scaler = StandardScaler().set_output(transform="pandas")
+# pos_cash_train_scaled = scaler.fit_transform(pos_cash_train)
+# pos_cash_test_scaled = scaler.transform(pos_cash_test)
+
+# # Predict features
+# print('Predicting features...')
+# model = LogisticRegression(max_iter=500)
+# model.fit(pos_cash_train_scaled, y_train)
+# pos_cash_train['POS_PREDICTION'] = model.predict_proba(pos_cash_train_scaled)[:, 1]
+# pos_cash_test['POS_PREDICTION'] = model.predict_proba(pos_cash_test_scaled)[:, 1]
+# print('ROC AUC score: {}'.format(roc_auc_score(y_train, pos_cash_train['POS_PREDICTION'])))
+# print('Gini score: {}'.format(2*roc_auc_score(y_train, pos_cash_train['POS_PREDICTION']) - 1))
+
 # Concatenate train and test
 pos_cash = pd.concat([pos_cash_train, pos_cash_test], axis=0)
 
@@ -117,5 +141,3 @@ pos_cash.drop(cols_to_drop, axis=1, inplace=True)
 
 # Save data
 pos_cash.to_csv('processed-data/processed_pos_cash.csv')
-
-

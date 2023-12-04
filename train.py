@@ -52,13 +52,20 @@ print(f'POS cash balance shape: {pos_cash_balance.shape}')
 data = data.merge(pos_cash_balance, how='left', on='SK_ID_CURR')
 
 # Merge new features
-new_train = pd.read_csv('processed-data/new_feat_train.csv')
-new_test = pd.read_csv('processed-data/new_feat_test.csv')
-new_data = pd.concat([new_train, new_test], axis=0)
+new_data = pd.read_csv('processed-data/all_data.csv')
 data = data.merge(new_data, how='left', on='SK_ID_CURR')
 
 # Print shape after merge
 print(f'Merged data shape: {data.shape}')
+
+# Drop duplicate columns
+data = data.loc[:, ~data.columns.duplicated()]
+
+# Replace inf with nan
+data.replace([np.inf, -np.inf], np.nan, inplace=True)
+
+# Drop target
+data.drop(['TARGET'], axis=1, inplace=True)
 
 # Set index
 data.set_index('SK_ID_CURR', inplace=True)
@@ -77,7 +84,7 @@ train = train.astype('float64')
 test = test.astype('float64')
 
 # Feature selection
-selected_features = select_features_lightgbm(train, target, threshold=0.1)
+selected_features = select_features_lightgbm(train, target, threshold=0.2)
 print(f'Number of selected features: {len(selected_features)}')
 print('Top 10 features:', selected_features.sort_values(ascending=False)[:20].index.tolist())
 train = train[selected_features.index]

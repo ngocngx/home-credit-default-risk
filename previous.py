@@ -2,13 +2,16 @@ import numpy as np
 import pandas as pd
 
 from sklearn.model_selection import train_test_split
-from sklearn.impute import MissingIndicator
+from sklearn.impute import SimpleImputer
 
 from sklearn.metrics import roc_auc_score
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.feature_selection import SelectFromModel, VarianceThreshold
 from functions import *
 from optbinning import OptimalBinning, Scorecard, BinningProcess
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import roc_auc_score
+from sklearn.preprocessing import StandardScaler
 
 def create_feature(df):
     new_features = {
@@ -59,16 +62,14 @@ previous, cat_cols = one_hot_encoder(previous, nan_as_category=True)
 print('After one-hot encoding: {}'.format(previous.shape))
 
 # Replace positive inf with max, negative inf with min
-for col in previous.select_dtypes(include=np.number).columns:
-    previous[col] = previous[col].replace(np.inf, np.nan)
-    previous[col] = previous[col].fillna(previous[col].max())
-    previous[col] = previous[col].replace(-np.inf, np.nan)
-    previous[col] = previous[col].fillna(previous[col].min())
+previous.replace([np.inf, -np.inf], [np.nan, np.nan], inplace=True)
+
+print('Number of inf values: {}'.format(previous.select_dtypes(include=np.number).isin([np.inf, -np.inf]).sum().sum()))
 
 # Aggregate
 previous.drop(['SK_ID_PREV'], axis=1, inplace=True)
 grouped_previous = previous.groupby('SK_ID_CURR')
-previous_agg = grouped_previous.agg(['min', 'max', 'mean', 'sum', 'var'])
+previous_agg = grouped_previous.agg(['min', 'max', 'mean', 'var'])
 previous_agg.columns = pd.Index(['PREV_' + e[0] + "_" + e[1].upper() for e in previous_agg.columns.tolist()])
 previous_agg['PREV_COUNT'] = grouped_previous.size()
 previous_agg['PREV_LASTEST_Approved'] = grouped_previous['NAME_CONTRACT_STATUS_Approved'].last()
@@ -102,9 +103,15 @@ binning_process.fit(previous_train, y_train)
 
 # Transform train and test
 previous_train_binned = binning_process.transform(previous_train, metric_missing=0.05)
+previous_train_binned.columns = [previous_train_binned.columns[i] + '_BINNED' for i in range(len(previous_train_binned.columns))]
 previous_train_binned.index = previous_train.index
 previous_test_binned = binning_process.transform(previous_test, metric_missing=0.05)
+previous_test_binned.columns = [previous_test_binned.columns[i] + '_BINNED' for i in range(len(previous_test_binned.columns))]
 previous_test_binned.index = previous_test.index
+
+# Merge original and binned
+previous_train_binned = pd.concat([previous_train, previous_train_binned], axis=1)
+previous_test_binned = pd.concat([previous_test, previous_test_binned], axis=1)
 
 # Sanitize columns
 previous_train_binned = sanitize_columns(previous_train_binned)
@@ -116,6 +123,27 @@ print('Number of selected features: {}'.format(len(selected_features)))
 print('Top 10 features:', selected_features.sort_values(ascending=False)[:10].index.tolist())
 previous_train = previous_train_binned[selected_features.index]
 previous_test = previous_test_binned[selected_features.index]
+
+# # Fill missing values
+# print('Filling missing values...')
+# imputer = SimpleImputer(strategy='mean').set_output(transform="pandas")
+# previous_train = imputer.fit_transform(previous_train)
+# previous_test = imputer.transform(previous_test)
+
+# # Scale
+# print('Scaling...')
+# scaler = StandardScaler().set_output(transform="pandas")
+# previous_train_scaled = scaler.fit_transform(previous_train)
+# previous_test_scaled = scaler.transform(previous_test)
+
+# # Predict
+# print('Predicting...')
+# logistic = LogisticRegression(class_weight='balanced', max_iter=500)
+# logistic.fit(previous_train_scaled, y_train)
+# previous_train['PREV_PREDICTION'] = logistic.predict_proba(previous_train_scaled)[:, 1]
+# previous_test['PREV_PREDICTION'] = logistic.predict_proba(previous_test_scaled)[:, 1]
+# print('ROC AUC score: {}'.format(roc_auc_score(y_train, previous_train['PREV_PREDICTION'])))
+# print('GINI score: {}'.format(2*roc_auc_score(y_train, previous_train['PREV_PREDICTION']) - 1))
 
 # Concatenate train and test
 previous = pd.concat([previous_train, previous_test], axis=0)

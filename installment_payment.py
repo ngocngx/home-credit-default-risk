@@ -3,6 +3,9 @@ import pandas as pd
 from sklearn.impute import SimpleImputer, MissingIndicator
 from functions import *
 from optbinning import OptimalBinning, Scorecard, BinningProcess
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import roc_auc_score
+from sklearn.preprocessing import StandardScaler
 
 def create_features(df):
     new_features = {
@@ -97,6 +100,27 @@ print('Number of selected features: {}'.format(len(selected_features)))
 print('Top 10 selected features: {}'.format(selected_features.sort_values(ascending=False)[:10].index.tolist()))
 installments_train = installments_train_binned[selected_features.index]
 installments_test = installments_test_binned[selected_features.index]
+
+# # Fill missing values
+# print('Filling missing values...')
+# imputer = SimpleImputer(strategy='mean').set_output(transform="pandas")
+# installments_train = imputer.fit_transform(installments_train)
+# installments_test = imputer.transform(installments_test)
+
+# # Scaled 
+# print('Scaling...')
+# scaler = StandardScaler().set_output(transform="pandas")
+# installments_train_scaled = scaler.fit_transform(installments_train)
+# installments_test_scaled = scaler.transform(installments_test)
+
+# # Predict
+# print('Predicting...')
+# model = LogisticRegression(max_iter=500)
+# model.fit(installments_train_scaled, y_train)
+# installments_train['INSTALL_PREDICT'] = model.predict_proba(installments_train_scaled)[:, 1]
+# installments_test['INSTALL_PREDICT'] = model.predict_proba(installments_test_scaled)[:, 1]
+# print('ROC AUC score: {}'.format(roc_auc_score(y_train, installments_train['INSTALL_PREDICT'])))
+# print('GINI score: {}'.format(2*roc_auc_score(y_train, installments_train['INSTALL_PREDICT']) - 1))
 
 # Concat train and test
 installments_agg = pd.concat([installments_train, installments_test], axis=0)

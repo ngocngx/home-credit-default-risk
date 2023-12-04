@@ -4,6 +4,9 @@ from datetime import datetime, timedelta
 from sklearn.impute import SimpleImputer, MissingIndicator
 from functions import *
 from optbinning import OptimalBinning, Scorecard, BinningProcess
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import roc_auc_score
+from sklearn.preprocessing import StandardScaler
 
 def create_feature(df):
     new_features = {
@@ -75,7 +78,7 @@ bureau, cat_cols = one_hot_encoder(bureau, nan_as_category= True)
 print('After one-hot encoding: {}'.format(bureau.shape))
 
 # Aggregate
-bureau_agg = bureau.groupby('SK_ID_CURR').agg(['min', 'max', 'mean', 'sum', 'var'])
+bureau_agg = bureau.groupby('SK_ID_CURR').agg(['min', 'max', 'mean', 'var'])
 bureau_agg.columns = pd.Index(['BURO_' + e[0] + "_" + e[1].upper() for e in bureau_agg.columns.tolist()])
 bureau_agg['BUR_COUNT'] = bureau.groupby('SK_ID_CURR').size()
 print('After aggregation: {}'.format(bureau_agg.shape))
@@ -95,9 +98,15 @@ binning_process.fit(bureau_train, y_train)
 
 # Transform train and test
 bureau_train_binned = binning_process.transform(bureau_train)
+bureau_train_binned.columns = [bureau_train_binned.columns[i] + '_BINNED' for i in range(len(bureau_train_binned.columns))]
 bureau_train_binned.index = bureau_train.index
 bureau_test_binned = binning_process.transform(bureau_test)
+bureau_test_binned.columns = [bureau_test_binned.columns[i] + '_BINNED' for i in range(len(bureau_test_binned.columns))]
 bureau_test_binned.index = bureau_test.index
+
+# Merge original with binned
+bureau_train_binned = pd.concat([bureau_train, bureau_train_binned], axis=1)
+bureau_test_binned = pd.concat([bureau_test, bureau_test_binned], axis=1)
 
 # Sanitize columns
 bureau_train_binned = sanitize_columns(bureau_train_binned)

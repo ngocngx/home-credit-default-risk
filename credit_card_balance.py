@@ -1,6 +1,8 @@
 import numpy as np
 import pandas as pd
 from sklearn.impute import SimpleImputer, MissingIndicator
+from sklearn.linear_model import LogisticRegression
+from sklearn.preprocessing import StandardScaler
 from functions import *
 from optbinning import OptimalBinning, Scorecard, BinningProcess
 
@@ -82,6 +84,27 @@ print('Number of selected features: {}'.format(len(selected_features)))
 print('Top 10 selected features: {}'.format(selected_features.sort_values(ascending=False)[:10].index.tolist()))
 cc_train = cc_train_binned[selected_features.index]
 cc_test = cc_test_binned[selected_features.index]
+
+# # Fill missing values
+# print('Filling missing values...')
+# imputer = SimpleImputer(strategy='mean').set_output(transform="pandas")
+# cc_train = imputer.fit_transform(cc_train)
+# cc_test = imputer.transform(cc_test)
+
+# # Scale
+# print('Scaling...')
+# scaler = StandardScaler().set_output(transform="pandas")
+# cc_train_scaled = scaler.fit_transform(cc_train)
+# cc_test_scaled = scaler.transform(cc_test)
+
+# # Predict feature
+# print('Predicting feature...')
+# model = LogisticRegression(max_iter=500)
+# model.fit(cc_train_scaled, y_train)
+# cc_train['CC_PREDICT'] = model.predict_proba(cc_train_scaled)[:, 1]
+# cc_test['CC_PREDICT'] = model.predict_proba(cc_test_scaled)[:, 1]
+# print('ROC AUC score: {}'.format(roc_auc_score(y_train, cc_train['CC_PREDICT'])))
+# print('GINI score: {}'.format(2*roc_auc_score(y_train, cc_train['CC_PREDICT']) - 1))
 
 # Concat train and test
 cc = pd.concat([cc_train, cc_test], axis=0)
