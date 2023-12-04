@@ -1,6 +1,6 @@
 import numpy as np
 import pandas as pd
-import datetime as dt
+from datetime import datetime, timedelta
 from sklearn.impute import SimpleImputer, MissingIndicator
 from functions import *
 from optbinning import OptimalBinning, Scorecard, BinningProcess
@@ -19,7 +19,9 @@ def create_feature(df):
     'BUREAU_IS_DPD_OVER60': df['CREDIT_DAY_OVERDUE'] > 60,
     'BUREAU_IS_DPD_OVER120': df['CREDIT_DAY_OVERDUE'] > 120,
     'UTILIZATION_RATIO': df['AMT_CREDIT_SUM_DEBT'] / df['AMT_CREDIT_SUM_LIMIT'],
-    'New_Loan_In_1Year': df[df['DAYS_CREDIT'] >= datetime.datetime.today() - timedelta(days=365)]['CREDIT_ACTIVE'].eq('Active').sum()
+    'NEW_LOANS_IN_1YEAR': (
+            df["DAYS_CREDIT_UPDATE"] >= datetime.datetime.today() - timedelta(days=365)
+        ).astype(int),
 
     # DAYS_CREDIT_mean
     'DAYS_CREDIT_mean': df.groupby('SK_ID_CURR')['DAYS_CREDIT'].mean(),
