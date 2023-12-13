@@ -22,18 +22,18 @@ def create_feature(df):
     'BUREAU_IS_DPD_OVER60': df['CREDIT_DAY_OVERDUE'] > 60,
     'BUREAU_IS_DPD_OVER120': df['CREDIT_DAY_OVERDUE'] > 120,
     'UTILIZATION_RATIO': df['AMT_CREDIT_SUM_DEBT'] / df['AMT_CREDIT_SUM_LIMIT'],
-    'NEW_LOANS_IN_1YEAR': (
-            df["DAYS_CREDIT_UPDATE"] >= datetime.datetime.today() - timedelta(days=365)
-        ).astype(int),
+    # 'NEW_LOANS_IN_1YEAR': (
+    #         df["DAYS_CREDIT_UPDATE"] >= datetime.today() - timedelta(days=365)
+    #     ).astype(int),
 
     # DAYS_CREDIT_mean
     'DAYS_CREDIT_mean': df.groupby('SK_ID_CURR')['DAYS_CREDIT'].mean(),
     # last_active_DAYS_CREDIT
     'last_active_DAYS_CREDIT': df.groupby('SK_ID_CURR')['DAYS_CREDIT'].last(),
     # BUREAU_AVG_LOAN_12M
-    'BUREAU_AVG_LOAN_12M': df.groupby('SK_ID_CURR')['DAYS_CREDIT'].rolling(window=12).mean()
+    'BUREAU_AVG_LOAN_12M': df.groupby('SK_ID_CURR')['DAYS_CREDIT'].rolling(window=12).mean(),
     # BUREAU_PCT_HIGH_DEBT_RATIO
-    'BUREAU_PCT_HIGH_DEBT_RATIO': (df['AMT_CREDIT_SUM_DEBT'] > 0.5 * df['AMT_CREDIT_SUM']).mean()
+    'BUREAU_PCT_HIGH_DEBT_RATIO': (df['AMT_CREDIT_SUM_DEBT'] > 0.5 * df['AMT_CREDIT_SUM']).mean(),
     }
 
     df = pd.concat([df, pd.DataFrame(new_features)], axis=1)
@@ -91,6 +91,11 @@ y_train = target[target.index.isin(bureau_agg.index)]['TARGET']
 bureau_train = bureau_agg[bureau_agg.index.isin(target.index)]
 bureau_test = bureau_agg[~bureau_agg.index.isin(target.index)]
 
+# Drop columns with 1 unique value
+cols_to_drop = [col for col in bureau_train.columns if bureau_train[col].nunique() <= 1]
+bureau_train.drop(cols_to_drop, axis=1, inplace=True)
+bureau_test.drop(cols_to_drop, axis=1, inplace=True)
+
 # Binning process
 variable_names = bureau_train.columns.tolist()
 binning_process = BinningProcess(variable_names)
@@ -108,16 +113,12 @@ bureau_test_binned.index = bureau_test.index
 bureau_train_binned = pd.concat([bureau_train, bureau_train_binned], axis=1)
 bureau_test_binned = pd.concat([bureau_test, bureau_test_binned], axis=1)
 
-# Sanitize columns
-bureau_train_binned = sanitize_columns(bureau_train_binned)
-bureau_test_binned = sanitize_columns(bureau_test_binned)
-
-# Select features
-selected_features = select_features_lightgbm(bureau_train_binned, y_train, threshold=1)
-print('Number of selected features: {}'.format(len(selected_features)))
-print('Top 10 selected features: {}'.format(selected_features.sort_values(ascending=False)[:10].index.tolist()))
-bureau_train = bureau_train_binned[selected_features.index]
-bureau_test = bureau_test_binned[selected_features.index]
+# Select features by IV
+print('Selecting features...')
+selected_features = select_features_iv(bureau_train_binned, y_train, threshold=0.02)
+print(f'Number of selected features: {len(selected_features)}')
+bureau_train = bureau_train_binned[selected_features]
+bureau_test = bureau_test_binned[selected_features]
 
 # Concat train and test
 bureau = pd.concat([bureau_train, bureau_test], axis=0)

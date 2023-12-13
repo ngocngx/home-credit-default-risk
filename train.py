@@ -5,7 +5,7 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import cross_val_score
 from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import MinMaxScaler, RobustScaler, StandardScaler
-from sklearn.feature_selection import SelectKBest, f_classif
+from optbinning import BinningProcess
 
 # Load data
 train = pd.read_csv('processed-data/application_train.csv')
@@ -51,9 +51,9 @@ pos_cash_balance = pd.read_csv('processed-data/processed_pos_cash.csv')
 print(f'POS cash balance shape: {pos_cash_balance.shape}')
 data = data.merge(pos_cash_balance, how='left', on='SK_ID_CURR')
 
-# Merge new features
-new_data = pd.read_csv('processed-data/all_data.csv')
-data = data.merge(new_data, how='left', on='SK_ID_CURR')
+# # Merge new features
+# new_data = pd.read_csv('processed-data/all_data.csv')
+# data = data.merge(new_data, how='left', on='SK_ID_CURR')
 
 # Print shape after merge
 print(f'Merged data shape: {data.shape}')
@@ -65,7 +65,7 @@ data = data.loc[:, ~data.columns.duplicated()]
 data.replace([np.inf, -np.inf], np.nan, inplace=True)
 
 # Drop target
-data.drop(['TARGET'], axis=1, inplace=True)
+data.drop(['TARGET'], axis=1, inplace=True, errors='ignore')
 
 # Set index
 data.set_index('SK_ID_CURR', inplace=True)

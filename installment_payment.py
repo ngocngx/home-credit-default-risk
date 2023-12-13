@@ -94,33 +94,12 @@ installments_train_binned.index = installments_train.index
 installments_test_binned = binning_process.transform(installments_test, metric_missing=0.05)
 installments_test_binned.index = installments_test.index
 
-# Select features
-selected_features = select_features_lightgbm(installments_train_binned, y_train, threshold=0.01)
-print('Number of selected features: {}'.format(len(selected_features)))
-print('Top 10 selected features: {}'.format(selected_features.sort_values(ascending=False)[:10].index.tolist()))
-installments_train = installments_train_binned[selected_features.index]
-installments_test = installments_test_binned[selected_features.index]
-
-# # Fill missing values
-# print('Filling missing values...')
-# imputer = SimpleImputer(strategy='mean').set_output(transform="pandas")
-# installments_train = imputer.fit_transform(installments_train)
-# installments_test = imputer.transform(installments_test)
-
-# # Scaled 
-# print('Scaling...')
-# scaler = StandardScaler().set_output(transform="pandas")
-# installments_train_scaled = scaler.fit_transform(installments_train)
-# installments_test_scaled = scaler.transform(installments_test)
-
-# # Predict
-# print('Predicting...')
-# model = LogisticRegression(max_iter=500)
-# model.fit(installments_train_scaled, y_train)
-# installments_train['INSTALL_PREDICT'] = model.predict_proba(installments_train_scaled)[:, 1]
-# installments_test['INSTALL_PREDICT'] = model.predict_proba(installments_test_scaled)[:, 1]
-# print('ROC AUC score: {}'.format(roc_auc_score(y_train, installments_train['INSTALL_PREDICT'])))
-# print('GINI score: {}'.format(2*roc_auc_score(y_train, installments_train['INSTALL_PREDICT']) - 1))
+# Select features IV
+print('Selecting features...')
+selected_features = select_features_iv(installments_train_binned, y_train, threshold=0.02)
+print(f'Number of selected features: {len(selected_features)}')
+installments_train = installments_train[selected_features]
+installments_test = installments_test[selected_features]
 
 # Concat train and test
 installments_agg = pd.concat([installments_train, installments_test], axis=0)

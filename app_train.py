@@ -115,12 +115,25 @@ test = test.select_dtypes('number')
 test = pd.concat([test, test_binned], axis=1)
 print(f'Train shape: {train.shape}, Test shape: {test.shape}')
 
-# Select features
-selected_features = select_features_lightgbm(train, y, threshold=0.1)
-train = train[selected_features.index]
-test = train[selected_features.index]
+# # Select features
+# selected_features = select_features_lightgbm(train, y, threshold=0.1)
+# train = train[selected_features.index]
+# test = train[selected_features.index]
+# print(f'Number of selected features: {len(selected_features)}')
+# print(f'Top 10 selected features: {selected_features.sort_values(ascending=False)[:10].index.tolist()}')
+
+# Fill missing values
+print('Filling missing values...')
+imputer = SimpleImputer(strategy='mean').set_output(transform='pandas')
+train = imputer.fit_transform(train)
+test = imputer.transform(test)
+
+# Select using IV
+print('Selecting features...')
+selected_features = select_features_iv(train, y, threshold=0.02)
+train = train[selected_features]
+test = test[selected_features]
 print(f'Number of selected features: {len(selected_features)}')
-print(f'Top 10 selected features: {selected_features.sort_values(ascending=False)[:10].index.tolist()}')
 
 print("Final train shape: ", train.shape)
 print("Final test shape: ", test.shape)

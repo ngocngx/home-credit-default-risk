@@ -100,37 +100,12 @@ pos_cash_test_binned.index = pos_cash_test.index
 pos_cash_train = pd.concat([pos_cash_train, pos_cash_train_binned], axis=1)
 pos_cash_test = pd.concat([pos_cash_test, pos_cash_test_binned], axis=1)
 
-# Sanitize columns
-pos_cash_train = sanitize_columns(pos_cash_train)
-pos_cash_test = sanitize_columns(pos_cash_test)
-
-# Select features
-selected_features = select_features_lightgbm(pos_cash_train, y_train, threshold=0.2)
-print('Number of selected features: {}'.format(len(selected_features)))
-print('Top 10 features:', selected_features.sort_values(ascending=False)[:20].index.tolist())
-pos_cash_train = pos_cash_train[selected_features.index]
-pos_cash_test = pos_cash_test[selected_features.index]
-
-# # Fill missing values
-# print('Filling missing values...')
-# imputer = SimpleImputer(strategy='mean').set_output(transform="pandas")
-# pos_cash_train = imputer.fit_transform(pos_cash_train)
-# pos_cash_test = imputer.transform(pos_cash_test)
-
-# # Scaled
-# print('Scaling...')
-# scaler = StandardScaler().set_output(transform="pandas")
-# pos_cash_train_scaled = scaler.fit_transform(pos_cash_train)
-# pos_cash_test_scaled = scaler.transform(pos_cash_test)
-
-# # Predict features
-# print('Predicting features...')
-# model = LogisticRegression(max_iter=500)
-# model.fit(pos_cash_train_scaled, y_train)
-# pos_cash_train['POS_PREDICTION'] = model.predict_proba(pos_cash_train_scaled)[:, 1]
-# pos_cash_test['POS_PREDICTION'] = model.predict_proba(pos_cash_test_scaled)[:, 1]
-# print('ROC AUC score: {}'.format(roc_auc_score(y_train, pos_cash_train['POS_PREDICTION'])))
-# print('Gini score: {}'.format(2*roc_auc_score(y_train, pos_cash_train['POS_PREDICTION']) - 1))
+# Select columns
+print(f'Selecting features...')
+selected_features = select_features_iv(pos_cash_train, y_train, threshold=0.02)
+print(f'Number of selected features: {len(selected_features)}')
+pos_cash_train = pos_cash_train[selected_features]
+pos_cash_test = pos_cash_test[selected_features]
 
 # Concatenate train and test
 pos_cash = pd.concat([pos_cash_train, pos_cash_test], axis=0)

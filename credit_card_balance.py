@@ -17,7 +17,7 @@ def create_features(df):
         # % of MINIMUM PAYMENTS MISSED
         'PERCENTAGE_OF_MINIMUM_PAYMENTS_MISSED': df['AMT_PAYMENT_CURRENT'] / df['AMT_INST_MIN_REGULARITY'],
         #  RATIO OF CASH VS CARD SWIPES
-        'RATIO_OF_CASH_VS_CARD_SWIPES': df['CNT_DRAWINGS_ATM_CURRENT'] / df['CNT_DRAWINGS_CURRENT'],
+        # 'RATIO_OF_CASH_VS_CARD_SWIPES': df['CNT_DRAWINGS_ATM_CURRENT'] / df['CNT_DRAWINGS_CURRENT'],
         # Minimum Payments Only
         'MINIMUM_PAYMENTS_ONLY': df['AMT_PAYMENT_CURRENT'] == df['AMT_INST_MIN_REGULARITY'],
         # Utilization Rate
@@ -74,37 +74,37 @@ binning_process.fit(cc_train, y_train)
 
 # Transform train and test
 cc_train_binned = binning_process.transform(cc_train, metric_missing=0.05)
+cc_train_binned.columns = [f'{col}_BINNED' for col in cc_train_binned.columns]
 cc_train_binned.index = cc_train.index
 cc_test_binned = binning_process.transform(cc_test, metric_missing=0.05)
+cc_test_binned.columns = [f'{col}_BINNED' for col in cc_test_binned.columns]
 cc_test_binned.index = cc_test.index
 
-# Select features
-selected_features = select_features_lightgbm(cc_train_binned, y_train, threshold=0.01)
-print('Number of selected features: {}'.format(len(selected_features)))
-print('Top 10 selected features: {}'.format(selected_features.sort_values(ascending=False)[:10].index.tolist()))
-cc_train = cc_train_binned[selected_features.index]
-cc_test = cc_test_binned[selected_features.index]
+# Concat original and binned
+# cc_train = pd.concat([cc_train, cc_train_binned], axis=1)
+# cc_test = pd.concat([cc_test, cc_test_binned], axis=1)
 
-# # Fill missing values
-# print('Filling missing values...')
-# imputer = SimpleImputer(strategy='mean').set_output(transform="pandas")
-# cc_train = imputer.fit_transform(cc_train)
-# cc_test = imputer.transform(cc_test)
+cc_train = cc_train_binned
+cc_test = cc_test_binned
 
-# # Scale
-# print('Scaling...')
-# scaler = StandardScaler().set_output(transform="pandas")
-# cc_train_scaled = scaler.fit_transform(cc_train)
-# cc_test_scaled = scaler.transform(cc_test)
+# Fill missing values
+print('Filling missing values...')
+imp = SimpleImputer(strategy='median').set_output(transform='pandas')
+cc_train = imp.fit_transform(cc_train)
+cc_test = imp.transform(cc_test)
+print('After missing value imputation: {}'.format(cc_train.shape))
 
-# # Predict feature
-# print('Predicting feature...')
-# model = LogisticRegression(max_iter=500)
-# model.fit(cc_train_scaled, y_train)
-# cc_train['CC_PREDICT'] = model.predict_proba(cc_train_scaled)[:, 1]
-# cc_test['CC_PREDICT'] = model.predict_proba(cc_test_scaled)[:, 1]
-# print('ROC AUC score: {}'.format(roc_auc_score(y_train, cc_train['CC_PREDICT'])))
-# print('GINI score: {}'.format(2*roc_auc_score(y_train, cc_train['CC_PREDICT']) - 1))
+# Remove duplicate columns
+cc_train = cc_train.loc[:, ~cc_train.columns.duplicated()]
+cc_test = cc_test.loc[:, ~cc_test.columns.duplicated()]
+print('After duplicate removal: {}'.format(cc_train.shape))
+
+# Select features using IV
+print('Selecting features...')
+selected_features = select_features_iv(cc_train, y_train, threshold=0.02)
+print(f'Number of selected features: {len(selected_features)}')
+cc_train = cc_train[selected_features]
+cc_test = cc_test[selected_features]
 
 # Concat train and test
 cc = pd.concat([cc_train, cc_test], axis=0)

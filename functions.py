@@ -5,6 +5,7 @@ from sklearn.feature_selection import SelectKBest, chi2
 from sklearn.ensemble import RandomForestClassifier
 import xgboost as xgb
 import lightgbm as lgbm
+from optbinning import BinningProcess
 
 class WoETransformer:
     def __init__(self, smoothing=0.5, default_woe=0.5, bins=10):
@@ -115,6 +116,25 @@ class WoETransformer:
         X = X.drop('y', axis=1, errors='ignore')
 
         return X
+    
+def select_features_iv(X, y, threshold=0.02):
+    """
+    Select features using Information Value (IV).
+
+    Parameters:
+    X (DataFrame): The input DataFrame.
+    y (Series): The target variable.
+    threshold (float): The threshold for feature selection.
+
+    Returns:
+    DataFrame: The DataFrame containing feature importances.
+    """
+    cols = X.columns.tolist()
+    binning = BinningProcess(variable_names=cols)
+    binning.fit(X, y)
+    iv = binning.summary().set_index('name')['iv']
+    selected_features = iv[iv >= threshold].index.tolist()
+    return selected_features
 
 def drop_missing(df, threshold):
     cols_to_drop = []
@@ -370,58 +390,3 @@ def select_features_lightgbm(X, y, threshold=0.001):
     print('Max importance: {}'.format(importances.max()))
     importances = importances / 10
     return importances[importances >= threshold]
-
-import pandas as pd
-import numpy as np
-
-def calculate_iv(X, y, bins=10, missing=False):
-    """
-    Calculate the Information Value (IV) of each feature in X relative to the binary target y.
-
-    :param X: DataFrame, feature data
-    :param y: Series, binary target variable
-    :param bins: Number of bins to use for numerical features
-    :param missing: Whether to include missing values as a separate category
-    :return: DataFrame with IV values for each feature
-    """
-    iv_dict = {}
-    for column in X.columns:
-        if X[column].dtype.kind in 'fi':  # Numeric features
-            X[column] = pd.qcut(X[column], q=bins, duplicates='drop').cat.add_categories(['MISSING'])
-        elif missing:
-            X[column] = X[column].astype('category').cat.add_categories(['MISSING'])
-
-        if missing:
-            X[column].fillna('MISSING', inplace=True)
-
-        # Calculate WoE and IV
-        grouped = X.groupby(column)[y.name].agg(['sum', 'count'])
-        grouped['event'] = grouped['sum']
-        grouped['non_event'] = grouped['count'] - grouped['event']
-        grouped['event_dist'] = grouped['event'] / grouped['event'].sum()
-        grouped['non_event_dist'] = grouped['non_event'] / grouped['non_event'].sum()
-        grouped['woe'] = np.log(grouped['event_dist'] / grouped['non_event_dist'])
-        grouped['iv'] = (grouped['event_dist'] - grouped['non_event_dist']) * grouped['woe']
-        
-        iv_value = grouped['iv'].sum()
-        iv_dict[column] = iv_value
-
-    iv_df = pd.DataFrame.from_dict(iv_dict, orient='index', columns=['IV'])
-    return iv_df
-
-def select_features_by_iv(iv_df, threshold=0.1):
-    """
-    Select features based on a threshold IV value.
-
-    :param iv_df: DataFrame with IV values for each feature
-    :param threshold: IV threshold for feature selection
-    :return: List of selected features
-    """
-    selected_features = iv_df[iv_df['IV'] >= threshold].index.tolist()
-    return selected_features
-
-# Usage Example
-# iv_df = calculate_iv(X_train, y_train, bins=10, missing=True)
-# selected_features = select_features_by_iv(iv_df, threshold=0.1)
-# X_train_selected = X_train[selected_features]
-# X_test_selected = X_test[selected_features]

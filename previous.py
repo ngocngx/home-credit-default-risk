@@ -117,36 +117,15 @@ previous_test_binned = pd.concat([previous_test, previous_test_binned], axis=1)
 previous_train_binned = sanitize_columns(previous_train_binned)
 previous_test_binned = sanitize_columns(previous_test_binned)
 
-# Select features
-selected_features = select_features_lightgbm(previous_train_binned, y_train, threshold=0.2)
+# Select features by IV
+print('Selecting features...')
+selected_features = select_features_iv(previous_train_binned, y_train, threshold=0.02)
+previous_train_binned = previous_train_binned[selected_features]
+previous_test_binned = previous_test_binned[selected_features]
 print('Number of selected features: {}'.format(len(selected_features)))
-print('Top 10 features:', selected_features.sort_values(ascending=False)[:10].index.tolist())
-previous_train = previous_train_binned[selected_features.index]
-previous_test = previous_test_binned[selected_features.index]
-
-# # Fill missing values
-# print('Filling missing values...')
-# imputer = SimpleImputer(strategy='mean').set_output(transform="pandas")
-# previous_train = imputer.fit_transform(previous_train)
-# previous_test = imputer.transform(previous_test)
-
-# # Scale
-# print('Scaling...')
-# scaler = StandardScaler().set_output(transform="pandas")
-# previous_train_scaled = scaler.fit_transform(previous_train)
-# previous_test_scaled = scaler.transform(previous_test)
-
-# # Predict
-# print('Predicting...')
-# logistic = LogisticRegression(class_weight='balanced', max_iter=500)
-# logistic.fit(previous_train_scaled, y_train)
-# previous_train['PREV_PREDICTION'] = logistic.predict_proba(previous_train_scaled)[:, 1]
-# previous_test['PREV_PREDICTION'] = logistic.predict_proba(previous_test_scaled)[:, 1]
-# print('ROC AUC score: {}'.format(roc_auc_score(y_train, previous_train['PREV_PREDICTION'])))
-# print('GINI score: {}'.format(2*roc_auc_score(y_train, previous_train['PREV_PREDICTION']) - 1))
 
 # Concatenate train and test
-previous = pd.concat([previous_train, previous_test], axis=0)
+previous = pd.concat([previous_train_binned, previous_test_binned], axis=0)
 
 # Save data
 previous.to_csv('processed-data/processed_previous_application.csv')
