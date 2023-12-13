@@ -70,9 +70,7 @@ for col in days_cols:
 df = df.replace(['XNA', 'Unknown', 'not specified'], np.nan)
 print(f'df shape: {df.shape}')
 
-# Define feature creation function
-def create_features(df):
-    # Your existing create_features function code
+
 
 # Define binning function
 def perform_binning(train, test, y):
