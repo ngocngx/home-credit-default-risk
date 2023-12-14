@@ -66,7 +66,7 @@ print('Number of inf values: {}'.format(previous.select_dtypes(include=np.number
 # Aggregate
 previous.drop(['SK_ID_PREV'], axis=1, inplace=True)
 grouped_previous = previous.groupby('SK_ID_CURR')
-previous_agg = grouped_previous.agg(['min', 'max', 'mean', 'var'])
+previous_agg = grouped_previous.agg(['min', 'max', 'mean', 'var', 'sum'])
 previous_agg.columns = pd.Index(['PREV_' + e[0] + "_" + e[1].upper() for e in previous_agg.columns.tolist()])
 previous_agg['PREV_COUNT'] = grouped_previous.size()
 previous_agg['PREV_LASTEST_Approved'] = grouped_previous['NAME_CONTRACT_STATUS_Approved'].last()
