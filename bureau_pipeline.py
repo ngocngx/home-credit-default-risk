@@ -18,7 +18,7 @@ def build_preprocessor(numeric_features, categorical_featutres):
     numeric_transformer = make_pipeline(
          SimpleImputer(strategy='mean'),
          StandardScaler(),
-])
+)
     categoric_transformer = make_pipeline(
             SimpleImputer(strategy='most_frequent'),
             OneHotEncoder(handle_unknown='ignore')
