@@ -15,7 +15,7 @@ class InfinityToNanTransformer(BaseEstimator, TransformerMixin):
     def transform(self, bureau):
         return bureau.replace([np.inf, -np.inf], np.nan)
 def build_preprocessor(numeric_features, categorical_featutres):
-    numeric_transformer = Pipeline(
+    numeric_transformer = make_pipeline(
          SimpleImputer(strategy='mean'),
          StandardScaler(),
 ])
