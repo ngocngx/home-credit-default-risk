@@ -31,6 +31,9 @@ def create_features(df):
         'OVERLIMIT_FLAG': df['AMT_BALANCE'] > df['AMT_CREDIT_LIMIT_ACTUAL'],
         # Rapid Account Turnover
         'RAPID_ACCOUNT_TURNOVER': df['CNT_DRAWINGS_CURRENT'] > df['CNT_DRAWINGS_CURRENT'].shift(1),
+        'SUM_ALL_AMT_DRAWINGS': df[['AMT_DRAWINGS_ATM_CURRENT', 'AMT_DRAWINGS_CURRENT', 'AMT_DRAWINGS_OTHER_CURRENT', 'AMT_DRAWINGS_POS_CURRENT']].sum(axis=1),
+        'SUM_ALL_CNT_DRAWINGS' : df[['CNT_DRAWINGS_ATM_CURRENT', 'CNT_DRAWINGS_CURRENT', 'CNT_DRAWINGS_OTHER_CURRENT', 'CNT_DRAWINGS_POS_CURRENT']].sum(axis=1),
+        'RATIO_ALL_AMT_DRAWINGS_TO_ALL_CNT_DRAWINGS' : df['SUM_ALL_AMT_DRAWINGS'] / df['SUM_ALL_CNT_DRAWINGS']
     }
     
     df = pd.concat([df, pd.DataFrame(new_features)], axis=1)
