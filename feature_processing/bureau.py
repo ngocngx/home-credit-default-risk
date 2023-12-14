@@ -77,7 +77,7 @@ bureau, cat_cols = one_hot_encoder(bureau, nan_as_category= True)
 print('After one-hot encoding: {}'.format(bureau.shape))
 
 # Aggregate
-bureau_agg = bureau.groupby('SK_ID_CURR').agg(['min', 'max', 'mean', 'var'])
+bureau_agg = bureau.groupby('SK_ID_CURR').agg(['min', 'max', 'mean', 'var', 'sum'])
 bureau_agg.columns = pd.Index(['BURO_' + e[0] + "_" + e[1].upper() for e in bureau_agg.columns.tolist()])
 bureau_agg['BUR_COUNT'] = bureau.groupby('SK_ID_CURR').size()
 print('After aggregation: {}'.format(bureau_agg.shape))
