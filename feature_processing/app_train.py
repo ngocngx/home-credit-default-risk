@@ -16,9 +16,11 @@ def create_features(df):
         'INCOME_PER_PERSON': df['AMT_INCOME_TOTAL'] / df['CNT_FAM_MEMBERS'],
         'ANNUITY_INCOME_PERC': df['AMT_ANNUITY'] / df['AMT_INCOME_TOTAL'],
         'PAYMENT_RATE': df['AMT_ANNUITY'] / df['AMT_CREDIT'],
+        'NEW_PAYMENT_RATE': df['AMT_CREDIT'] / df['AMT_ANNUITY'],
         'CHILDREN_RATIO': df['CNT_CHILDREN'] / df['CNT_FAM_MEMBERS'],
         'CREDIT_TO_ANNUITY_RATIO': df['AMT_CREDIT'] / df['AMT_ANNUITY'],
         'CREDIT_TO_GOODS_RATIO': df['AMT_CREDIT'] / df['AMT_GOODS_PRICE'],
+        'CREDIT_GOODS_PRICE_RATIO1': (df['AMT_CREDIT'] - df['AMT_GOODS_PRICE']) /  df['AMT_GOODS_PRICE'],
         'ANNUITY_TO_INCOME_RATIO': df['AMT_ANNUITY'] / df['AMT_INCOME_TOTAL'],
         'CREDIT_TO_INCOME_RATIO': df['AMT_CREDIT'] / df['AMT_INCOME_TOTAL'],
         'INCOME_TO_EMPLOYED_RATIO': df['AMT_INCOME_TOTAL'] / df['DAYS_EMPLOYED'],
@@ -28,13 +30,15 @@ def create_features(df):
         'CAR_TO_BIRTH_RATIO': df['OWN_CAR_AGE'] / df['DAYS_BIRTH'],
         'CAR_TO_EMPLOYED_RATIO': df['OWN_CAR_AGE'] / df['DAYS_EMPLOYED'],
         'PHONE_TO_BIRTH_RATIO': df['DAYS_LAST_PHONE_CHANGE'] / df['DAYS_BIRTH'],
+        'NEW_DAYS_EMPLOYED_PERC': df['DAYS_EMPLOYED'] / df['DAYS_BIRTH'],
+        'INCOME_RATIO' : df['AMT_INCOME_TOTAL'] / df.groupby(['ORGANIZATION_TYPE', 'NAME_EDUCATION_TYPE'])['AMT_INCOME_TOTAL'].transform('median'),
         # Loan Utilization Ratio
         'LOAN_UR': df['AMT_CREDIT'] / df['AMT_GOODS_PRICE'],
         # Age
         'AGE': df['DAYS_BIRTH'].apply(lambda x: -int(x / 365)),
         # Debt Burden Ratio
         'DEBT_BURDEN': df['AMT_ANNUITY'] / df['AMT_INCOME_TOTAL'],
-        'DEBT_BURDEN_PER_LIFE_DAY': (1 / df['PAYMENT_RATE']) / df['DAYS_BIRTH'],
+        'DEBT_BURDEN_PER_LIFE_DAY': df['NEW_PAYMENT_RATE'] / df['DAYS_BIRTH'],
         # External Source
         'EXT_SOURCE_PROD': df['EXT_SOURCE_1'] * df['EXT_SOURCE_2'] * df['EXT_SOURCE_3'],
         'EXT_SOURCE_MEAN': df[['EXT_SOURCE_1', 'EXT_SOURCE_2', 'EXT_SOURCE_3']].mean(axis=1),
