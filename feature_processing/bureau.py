@@ -1,12 +1,11 @@
 import numpy as np
 import pandas as pd
-from datetime import datetime, timedelta
-from sklearn.impute import SimpleImputer, MissingIndicator
+from optbinning import BinningProcess
+
+import os
+import sys
+sys.path.append(os.getcwd())
 from functions.functions import *
-from optbinning import OptimalBinning, Scorecard, BinningProcess
-from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import roc_auc_score
-from sklearn.preprocessing import StandardScaler
 
 def create_feature(df):
     new_features = {

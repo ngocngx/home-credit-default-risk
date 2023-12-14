@@ -1,10 +1,11 @@
 import numpy as np
 import pandas as pd
-from sklearn.impute import SimpleImputer, MissingIndicator
-from sklearn.linear_model import LogisticRegression
-from sklearn.preprocessing import StandardScaler
+from optbinning import BinningProcess
+
+import os
+import sys
+sys.path.append(os.getcwd())
 from functions.functions import *
-from optbinning import OptimalBinning, Scorecard, BinningProcess
 
 def create_features(df):
     new_features = {
@@ -86,13 +87,6 @@ cc_test_binned.index = cc_test.index
 
 cc_train = cc_train_binned
 cc_test = cc_test_binned
-
-# Fill missing values
-print('Filling missing values...')
-imp = SimpleImputer(strategy='median').set_output(transform='pandas')
-cc_train = imp.fit_transform(cc_train)
-cc_test = imp.transform(cc_test)
-print('After missing value imputation: {}'.format(cc_train.shape))
 
 # Remove duplicate columns
 cc_train = cc_train.loc[:, ~cc_train.columns.duplicated()]

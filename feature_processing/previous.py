@@ -1,17 +1,11 @@
 import numpy as np
 import pandas as pd
+from optbinning import BinningProcess
 
-from sklearn.model_selection import train_test_split
-from sklearn.impute import SimpleImputer
-
-from sklearn.metrics import roc_auc_score
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.feature_selection import SelectFromModel, VarianceThreshold
+import os
+import sys
+sys.path.append(os.getcwd())
 from functions.functions import *
-from optbinning import OptimalBinning, Scorecard, BinningProcess
-from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import roc_auc_score
-from sklearn.preprocessing import StandardScaler
 
 def create_feature(df):
     new_features = {

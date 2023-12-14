@@ -1,13 +1,12 @@
 import numpy as np
 import pandas as pd
+from sklearn.impute import SimpleImputer
+from optbinning import BinningProcess
 
-from sklearn.preprocessing import OneHotEncoder, MinMaxScaler, RobustScaler
-from sklearn.impute import MissingIndicator, SimpleImputer
-
-from sklearn.decomposition import PCA
+import os
+import sys
+sys.path.append(os.getcwd())
 from functions.functions import *
-from optbinning import OptimalBinning, Scorecard, BinningProcess
-
 
 def create_features(df):
     # Calculate new features
