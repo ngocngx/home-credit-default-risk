@@ -12,7 +12,6 @@ def create_feature(df):
         'APP_CREDIT_PERC': df['AMT_APPLICATION'] / df['AMT_CREDIT'],
         'APP_CREDIT_RATIO': df.apply(lambda x: x['AMT_APPLICATION'] / x['AMT_CREDIT'] if x['AMT_CREDIT'] != 0 else np.nan, axis=1),
         'ANNUITY_PAYMENT_PRODUCT': df['AMT_ANNUITY'] * df['CNT_PAYMENT'],
-        'INTEREST_SHARE': df['INTEREST']/df['AMT_CREDIT'],
         # Time-based Features
         'DAYS_DECISION_YEAR': df['DAYS_DECISION'] // 365,
         # Categorical Combinations

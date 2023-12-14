@@ -38,7 +38,6 @@ def create_features(df):
         'AGE': df['DAYS_BIRTH'].apply(lambda x: -int(x / 365)),
         # Debt Burden Ratio
         'DEBT_BURDEN': df['AMT_ANNUITY'] / df['AMT_INCOME_TOTAL'],
-        'DEBT_BURDEN_PER_LIFE_DAY': df['NEW_PAYMENT_RATE'] / df['DAYS_BIRTH'],
         # External Source
         'EXT_SOURCE_PROD': df['EXT_SOURCE_1'] * df['EXT_SOURCE_2'] * df['EXT_SOURCE_3'],
         'EXT_SOURCE_MEAN': df[['EXT_SOURCE_1', 'EXT_SOURCE_2', 'EXT_SOURCE_3']].mean(axis=1),
@@ -50,6 +49,7 @@ def create_features(df):
 
     # Add new columns to the DataFrame all at once
     df = pd.concat([df, pd.DataFrame(new_columns)], axis=1)
+    df['DEBT_BURDEN_PER_LIFE_DAY'] = df['NEW_PAYMENT_RATE'] / df['DAYS_BIRTH']
 
     return df
 

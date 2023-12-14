@@ -55,7 +55,7 @@ print('After one-hot encoding: {}'.format(pos_cash.shape))
 
 # Aggregate
 pos_cash.drop('SK_ID_PREV', axis=1, inplace=True)
-pos_cash_agg = pos_cash.groupby('SK_ID_CURR').agg(['min', 'max', 'mean', 'var','sum'])
+pos_cash_agg = pos_cash.groupby('SK_ID_CURR').agg(['min', 'max', 'mean', 'var'])
 pos_cash_agg.columns = pd.Index(['POS_' + e[0] + "_" + e[1].upper() for e in pos_cash_agg.columns.tolist()])
 print('After aggregation: {}'.format(pos_cash_agg.shape))
 print('Null values: {}'.format(pos_cash_agg.isnull().values.sum()))
