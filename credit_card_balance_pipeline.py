@@ -22,8 +22,8 @@ def build_preprocessor(numeric_features, categorical_featutres):
     )
     preprocessor = ColumnTransformer(
         transformers=[
-            ('num', numeric_transformer, numerical_features),
-            ('cat', categoric_transformer, categorical_features)
+            ('num', numeric_transformer, numeric_features),
+            ('cat', categoric_transformer, categoric_features)
         ])
     return preprocessor
 
