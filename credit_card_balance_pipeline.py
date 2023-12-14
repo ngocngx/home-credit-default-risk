@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import joblib
 from sklearn.impute import SimpleImputer
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.linear_model import LogisticRegression
@@ -39,13 +40,13 @@ def main():
     categoric_features = cc_train.select_dtypes(include=['object']).columns
     preprocessor = build_preprocessor(numeric_features, categoric_features)
     # Define pipeline
-    credit_card = Pipeline([
+    credit_card_pipeline = Pipeline([
         ('preprocessor', preprocessor),
         ('classifier', LogisticRegression())
     ])
-    credit_card.fit(cc_train, cc_test)
+    credit_card_pipeline.fit(cc_train, cc_test)
 
-    joblib.dump(credit_card, 'credit_card.pkl')
+    joblib.dump(credit_card_pipeline, 'credit_card_pipeline.pkl')
     joblib.dump(preprocessor, 'preprocessor_cc.pkl')
 
         
