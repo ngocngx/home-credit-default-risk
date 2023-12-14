@@ -82,7 +82,7 @@ numpy==1.23.5
 openpyxl==3.1.2
 optbinning==0.18.0
 optuna==3.4.0
-ortools==9.8.3296
+ortools==9.7.2996
 osqp==0.6.3
 overrides==7.4.0
 packaging==23.1
