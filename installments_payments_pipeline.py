@@ -14,7 +14,7 @@ class InfinityToNanTransformer(BaseEstimator, TransformerMixin):
         return self
 
     def transform(self, installments):
-        return installments.replace([np.inf, -np.inf], np.nan),installments.replace(['XNA', 'Unknown', 'not specified'], np.nan)
+        return installments.replace([np.inf, -np.inf], np.nan), installments.replace(['XNA', 'Unknown', 'not specified'], np.nan)
 def build_preprocessor(numeric_features, categorical_featutres):
     numeric_transformer = make_pipeline(
          SimpleImputer(strategy='mean'),
@@ -42,11 +42,11 @@ def main():
     numeric_features = installments_train.select_dtypes(include=['int64', 'float64']).columns
     categoric_features = installments_train.select_dtypes(include=['object']).columns
     preprocessor = build_preprocessor(numeric_features, categoric_features)
-    installments = Pipeline([
+    installments_pipeline = Pipeline([
         ('preprocessor', preprocessor),
         ('classifier', LogisticRegression())
     ])
-    installments.fit(installments_train, installments_test)
-    joblib.dump(installments, 'installments.pkl')
+    installments_pipeline.fit(installments_train, installments_test)
+    joblib.dump(installments_pipeline, 'installments_pipeline.pkl')
     joblib.dump(preprocessor, 'preprocessor_ins.pkl')
 
