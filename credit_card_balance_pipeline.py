@@ -43,7 +43,7 @@ def main():
         ('preprocessor', preprocessor),
         ('classifier', LogisticRegression())
     ])
-    credit_card.fit(bureau_train, bureau.test)
+    credit_card.fit(cc_train, cc_test)
 
     joblib.dump(credit_card, 'credit_card.pkl')
     joblib.dump(preprocessor, 'preprocessor_cc.pkl')
