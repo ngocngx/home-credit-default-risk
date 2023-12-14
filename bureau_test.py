@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import joblib
 from sklearn.impute import SimpleImputer, MissingIndicator
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import roc_auc_score
@@ -8,7 +9,27 @@ from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
 from optbinning import BinningProcess
 from functions import *
+class InfinityToNanTransformer(BaseEstimator, TransformerMixin):
+    def fit(self, bureau, y = None):
+        return self
 
+    def transform(self, bureau):
+        return bureau.replace([np.inf, -np.inf], np.nan)
+def build_preprocessor(numeric_features, categorical_featutres):
+    numeric_transformer = Pipeline(
+         SimpleImputer(strategy='mean'),
+         StandardScaler(),
+])
+    categoric_transformer = make_pipeline(
+            SimpleImputer(strategy='most_frequent'),
+            OneHotEncoder(handle_unknown='ignore')
+    )
+    preprocessor = ColumnTransformer(
+        transformers=[
+            ('num', numeric_transformer, numerical_features),
+            ('cat', categoric_transformer, categorical_features)
+        ])
+    return preprocessor
 # Define binning function
 def perform_binning(train, test, y):
     variable_names = train.columns.tolist()
@@ -62,15 +83,7 @@ bureau = create_feature(bureau)
 # Merge bureau_balance with bureau
 bureau = bureau.merge(bb_aggregations, how='left', on='SK_ID_BUREAU')
 bureau.drop('SK_ID_BUREAU', axis=1, inplace=True)
-bureau.set_index('SK_ID_CURR', inplace=True)
-
-# Replace positive inf with nan
-bureau = bureau.replace([np.inf, -np.inf], np.nan)
-
-# One-hot encoding for categorical columns with get_dummies
-bureau, cat_cols = one_hot_encoder(bureau, nan_as_category=True)
-print('After one-hot encoding: {}'.format(bureau.shape))
-
+bureau.set_index('SK_ID_CURR', inplace= True)
 # Aggregate
 bureau_agg = bureau.groupby('SK_ID_CURR').agg(['min', 'max', 'mean', 'var'])
 bureau_agg.columns = pd.Index(['BURO_' + e[0] + "_" + e[1].upper() for e in bureau_agg.columns.tolist()])
@@ -92,25 +105,14 @@ bureau_test.drop(cols_to_drop, axis=1, inplace=True)
 numeric_features = bureau_train.select_dtypes(include=['int64', 'float64']).columns
 categorical_features = bureau_train.select_dtypes(include=['object']).columns
 
-numeric_transformer = Pipeline(steps=[
-    ('imputer', SimpleImputer(strategy='mean')),
-    ('scaler', StandardScaler())
+preprocessor = build_preprocessor(numeric_features, categorical_featutres)
+
+pipeline = Pipeline([
+    ('preprocessor', preprocessor),
+    ('classifier', LogisticRegression())
 ])
 
-preprocessor = ColumnTransformer(
-    transformers=[
-        ('num', numeric_transformer, numeric_features),
-    ])
+pipeline.fit(bureau_train, bureau.test)
 
-pipeline = Pipeline(steps=[
-    ('binning', perform_binning),
-    ('preprocess', preprocessor),
-    ('feature_selection', perform_feature_selection)
-])
-
-# Execute the pipeline
-bureau_train_processed, bureau_test_processed = pipeline.fit_transform(bureau_train, bureau_test, y_train)
-
-# Save
-bureau_train_processed.to_csv('processed-data/processed_bureau_train.csv')
-bureau_test_processed.to_csv('processed-data/processed_bureau_test.csv')
+ joblib.dump(pipeline, 'pipeline.pkl')
+joblib.dump(preprocessor, 'preprocessor.pkl')
