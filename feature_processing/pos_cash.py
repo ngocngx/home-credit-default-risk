@@ -45,7 +45,7 @@ pos_cash_filter, cat_cols = one_hot_encoder(pos_cash_filter, nan_as_category= Tr
 print('After one-hot encoding: {}'.format(pos_cash_filter.shape))
 
 # Aggregate
-pos_cash_filter_agg = pos_cash_filter.groupby('SK_ID_CURR').agg(['min', 'max', 'mean', 'var'])
+pos_cash_filter_agg = pos_cash_filter.groupby('SK_ID_CURR').agg(['min', 'max', 'mean', 'var','sum'])
 pos_cash_filter_agg.columns = pd.Index(['POS_FILTER_' + e[0] + "_" + e[1].upper() for e in pos_cash_filter_agg.columns.tolist()])
 print('After aggregation: {}'.format(pos_cash_filter_agg.shape))
 
