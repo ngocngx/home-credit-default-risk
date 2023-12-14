@@ -1,13 +1,13 @@
 import numpy as np
 import pandas as pd
-from sklearn.compose import ColumnTransformer
+
 from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import OneHotEncoder, MinMaxScaler, RobustScaler
+from sklearn.compose import ColumnTransformer
 from sklearn.impute import SimpleImputer
+from sklearn.preprocessing import OneHotEncoder, MinMaxScaler, RobustScaler
 from sklearn.decomposition import PCA
 from optbinning import BinningProcess
-from functions import select_features_iv
-
+from functions import *
 def create_features(df):
     # Calculate new features
     new_columns = {
@@ -45,33 +45,7 @@ def create_features(df):
 
     # Add new columns to the DataFrame all at once
     df = pd.concat([df, pd.DataFrame(new_columns)], axis=1)
-
     return df
-# Load data
-train = pd.read_csv('raw-data/dseb63_application_train.csv')
-train.drop('Unnamed: 0', axis=1, inplace=True)
-train.set_index('SK_ID_CURR', inplace=True)
-
-test = pd.read_csv('raw-data/dseb63_application_test.csv')
-test.drop('Unnamed: 0', axis=1, inplace=True)
-test.set_index('SK_ID_CURR', inplace=True)
-
-# Merge train and test
-train['is_train'] = 1
-test['is_train'] = 0
-df = pd.concat([train, test], axis=0)
-
-# Replace positive if DAYS feature with nan
-days_cols = [col for col in df.columns if 'DAYS' in col]
-for col in days_cols:
-    positive_mask = df[col] >= 0
-    df.loc[positive_mask, col] = np.nan
-
-df = df.replace(['XNA', 'Unknown', 'not specified'], np.nan)
-print(f'df shape: {df.shape}')
-
-
-
 # Define binning function
 def perform_binning(train, test, y):
     cat_cols = train.select_dtypes(include='object').columns.tolist()
@@ -105,7 +79,38 @@ def perform_feature_selection(train, test, y):
     test = test[selected_features]
     print(f'Number of selected features: {len(selected_features)}')
     return train, test
+import numpy as np
+import pandas as pd
+from sklearn.compose import ColumnTransformer
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import OneHotEncoder, MinMaxScaler, RobustScaler
+from sklearn.impute import SimpleImputer
+from sklearn.decomposition import PCA
+from optbinning import BinningProcess
+from functions import select_features_iv
 
+# Load data
+train = pd.read_csv('raw-data/dseb63_application_train.csv')
+train.drop('Unnamed: 0', axis=1, inplace=True)
+train.set_index('SK_ID_CURR', inplace=True)
+
+test = pd.read_csv('raw-data/dseb63_application_test.csv')
+test.drop('Unnamed: 0', axis=1, inplace=True)
+test.set_index('SK_ID_CURR', inplace=True)
+
+# Merge train and test
+train['is_train'] = 1
+test['is_train'] = 0
+df = pd.concat([train, test], axis=0)
+
+# Replace positive if DAYS feature with nan
+days_cols = [col for col in df.columns if 'DAYS' in col]
+for col in days_cols:
+    positive_mask = df[col] >= 0
+    df.loc[positive_mask, col] = np.nan
+
+df = df.replace(['XNA', 'Unknown', 'not specified'], np.nan)
+print(f'df shape: {df.shape}')
 # Create the pipeline
 numeric_features = train.select_dtypes(include=['int64', 'float64']).columns
 categorical_features = train.select_dtypes(include=['object']).columns
@@ -149,10 +154,11 @@ train.replace([np.inf, -np.inf], np.nan, inplace=True)
 test.replace([np.inf, -np.inf], np.nan, inplace=True)
 
 # Execute the pipeline
-train  = pipeline.fit_transform(train, y)
+train, test = pipeline.fit_transform(train, test, y)
 
 # Save train and test
 print('Saving...')
 train.to_csv('processed-data/application_train.csv')
 test.to_csv('processed-data/application_test.csv')
 print('Done!')
+
