@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 import joblib
 from sklearn.impute import SimpleImputer, MissingIndicator
+from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import roc_auc_score
 from sklearn.preprocessing import StandardScaler
