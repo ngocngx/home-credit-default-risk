@@ -11,7 +11,7 @@ class InfinityToNanTransformer(BaseEstimator, TransformerMixin):
 
     def transform(self, cc):
         return cc.replace([np.inf, -np.inf], np.nan)
-def build_preprocessor(numeric_features, categorical_featutres):
+def build_preprocessor(numeric_features, categoric_featutres):
     numeric_transformer = make_pipeline(
          SimpleImputer(strategy='mean'),
          StandardScaler(),
@@ -37,7 +37,7 @@ def main():
     # Create the pipeline
     numeric_features = cc_train.select_dtypes(include=['int64', 'float64']).columns
     categoric_features = cc_train.select_dtypes(include=['object']).columns
-    preprocessor = build_preprocessor(numerical_cols, categorical_cols)
+    preprocessor = build_preprocessor(numeric_features, categoric_features)
     # Define pipeline
     credit_card = Pipeline([
         ('preprocessor', preprocessor),
