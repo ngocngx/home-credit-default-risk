@@ -139,6 +139,11 @@ train = train[selected_features]
 test = test[selected_features]
 print(f'Number of selected features: {len(selected_features)}')
 
+
+# Rename columns
+train.columns = [f'APP_{col}' for col in train.columns]
+test.columns = [f'APP_{col}' for col in test.columns]
+
 print("Final train shape: ", train.shape)
 print("Final test shape: ", test.shape)
 
