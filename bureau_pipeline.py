@@ -38,7 +38,7 @@ def main():
     bureau_balance = pd.read_csv('raw-data/dseb63_bureau_balance.csv')
 
     # Create the pipeline
-    numeric_features = bureau_train.select_dtypes(include=['int64', 'float64']).columns
+    numerical_features = bureau_train.select_dtypes(include=['int64', 'float64']).columns
     categorical_features = bureau_train.select_dtypes(include=['object']).columns
 
     preprocessor = build_preprocessor(numeric_features, categorical_featutres)
