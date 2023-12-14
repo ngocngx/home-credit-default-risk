@@ -49,7 +49,7 @@ def main():
     ])
 
 
-    bureau_pipeline.fit(bureau_train, bureau.test)
+    bureau_pipeline.fit(bureau_train, bureau_test)
 
     joblib.dump(bureau_pipeline, 'bureau_pipeline.pkl')
     joblib.dump(preprocessor, 'preprocessor.pkl')
