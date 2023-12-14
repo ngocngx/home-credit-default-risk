@@ -43,13 +43,13 @@ def main():
 
     preprocessor = build_preprocessor(numeric_features, categorical_featutres)
 
-    pipeline = Pipeline([
+    bureau_pipeline = Pipeline([
         ('preprocessor', preprocessor),
         ('classifier', LogisticRegression())
     ])
 
 
-    pipeline.fit(bureau_train, bureau.test)
+    bureau_pipeline.fit(bureau_train, bureau.test)
 
-    joblib.dump(pipeline, 'pipeline.pkl')
+    joblib.dump(bureau_pipeline, 'bureau_pipeline.pkl')
     joblib.dump(preprocessor, 'preprocessor.pkl')
