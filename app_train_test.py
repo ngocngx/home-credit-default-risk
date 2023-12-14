@@ -149,7 +149,7 @@ train.replace([np.inf, -np.inf], np.nan, inplace=True)
 test.replace([np.inf, -np.inf], np.nan, inplace=True)
 
 # Execute the pipeline
-train, test = pipeline.fit_transform(train, test, y)
+train  = pipeline.fit_transform(train, y)
 
 # Save train and test
 print('Saving...')
