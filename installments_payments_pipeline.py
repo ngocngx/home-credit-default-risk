@@ -4,7 +4,7 @@ import joblib
 from sklearn.pipeline import Pipeline
 from sklearn.impute import SimpleImputer
 from sklearn.base import BaseEstimator, TransformerMixin
-from functions import *
+from functions.functions import *
 from sklearn.preprocessing import StandardScaler, OneHotEncoder
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import roc_auc_score

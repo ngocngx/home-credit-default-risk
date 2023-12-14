@@ -5,7 +5,7 @@ from sklearn.pipeline import Pipeline
 from optbinning import BinningProcess
 from sklearn.linear_model import LogisticRegression
 from sklearn.preprocessing import StandardScaler
-from functions import *
+from functions.functions import *
 
 def create_feature(df):
     new_features = {

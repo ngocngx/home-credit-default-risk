@@ -5,7 +5,7 @@ from sklearn.preprocessing import OneHotEncoder, MinMaxScaler, RobustScaler
 from sklearn.impute import MissingIndicator, SimpleImputer
 
 from sklearn.decomposition import PCA
-from functions import *
+from functions.functions import *
 from optbinning import OptimalBinning, Scorecard, BinningProcess
 
 

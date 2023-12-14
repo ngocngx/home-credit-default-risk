@@ -7,7 +7,7 @@ from sklearn.impute import SimpleImputer
 from sklearn.metrics import roc_auc_score
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.feature_selection import SelectFromModel, VarianceThreshold
-from functions import *
+from functions.functions import *
 from optbinning import OptimalBinning, Scorecard, BinningProcess
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import roc_auc_score

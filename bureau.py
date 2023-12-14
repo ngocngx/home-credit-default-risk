@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 from datetime import datetime, timedelta
 from sklearn.impute import SimpleImputer, MissingIndicator
-from functions import *
+from functions.functions import *
 from optbinning import OptimalBinning, Scorecard, BinningProcess
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import roc_auc_score

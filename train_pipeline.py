@@ -9,7 +9,7 @@ from sklearn.preprocessing import OneHotEncoder, MinMaxScaler, RobustScaler
 from sklearn.decomposition import PCA
 from sklearn.linear_model import LogisticRegression
 from optbinning import BinningProcess
-from functions import *
+from functions.functions import *
 
 class InfinityToNanTransformer(BaseEstimator, TransformerMixin):
     def fit(self, X, y = None):

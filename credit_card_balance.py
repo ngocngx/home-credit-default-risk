@@ -3,7 +3,7 @@ import pandas as pd
 from sklearn.impute import SimpleImputer, MissingIndicator
 from sklearn.linear_model import LogisticRegression
 from sklearn.preprocessing import StandardScaler
-from functions import *
+from functions.functions import *
 from optbinning import OptimalBinning, Scorecard, BinningProcess
 
 def create_features(df):

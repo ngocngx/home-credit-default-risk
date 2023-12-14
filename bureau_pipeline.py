@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 import joblib
-from functions import *
+from functions.functions import *
 from optbinning import OptimalBinning
 from sklearn.impute import SimpleImputer, MissingIndicator
 from sklearn.base import BaseEstimator, TransformerMixin
