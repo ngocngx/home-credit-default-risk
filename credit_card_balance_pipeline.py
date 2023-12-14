@@ -37,6 +37,7 @@ def main():
     # Create the pipeline
     numeric_features = cc_train.select_dtypes(include=['int64', 'float64']).columns
     categoric_features = cc_train.select_dtypes(include=['object']).columns
+    preprocessor = build_preprocessor(numerical_cols, categorical_cols)
     # Define pipeline
     credit_card = Pipeline([
         ('preprocessor', preprocessor),
