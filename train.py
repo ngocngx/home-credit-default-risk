@@ -1,142 +1,124 @@
 import pandas as pd
 import numpy as np
-from functions.functions import *
+
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import cross_val_score
 from sklearn.impute import SimpleImputer
-from sklearn.preprocessing import MinMaxScaler, RobustScaler, StandardScaler
-from optbinning import BinningProcess
+from sklearn.preprocessing import StandardScaler
 
-# Load data
-train = pd.read_csv('processed-data/application_train.csv')
-test = pd.read_csv('processed-data/application_test.csv')
-target = pd.read_csv('processed-data/target.csv')
+from functions.functions import sanitize_columns, select_features_lightgbm
 
-train.set_index('SK_ID_CURR', inplace=True)
-train.sort_index(inplace=True)
-test.set_index('SK_ID_CURR', inplace=True)
-test.sort_index(inplace=True)
-target.set_index('SK_ID_CURR', inplace=True)
-target = target['TARGET']
+class DataProcessor:
+    def __init__(self, train, test, target, *dfs):
+        self.train = train
+        self.test = test
+        self.target = target
+        self.dfs = dfs
+        
+        self.features = None
+        self.imputer = SimpleImputer(strategy='mean').set_output(transform='pandas')
+        self.scaler = StandardScaler().set_output(transform='pandas')
 
-print(f'Train shape: {train.shape}, Test shape: {test.shape}, Target shape: {target.shape}')
+    def process(self, train, test, target):
+        # Set index and sort dataframes
+        train.set_index('SK_ID_CURR', inplace=True)
+        train.sort_index(inplace=True)
+        test.set_index('SK_ID_CURR', inplace=True)
+        test.sort_index(inplace=True)
+        target.set_index('SK_ID_CURR', inplace=True)
+        target = target['TARGET']
 
-# Merge train and test
-train['is_train'] = 1
-test['is_train'] = 0
-data = pd.concat([train, test], axis=0)
+        # Add is_train column and merge train and test data
+        train['is_train'] = 1
+        test['is_train'] = 0
+        data = pd.concat([train, test], axis=0)
 
-# Merge with previous application
-previous_application = pd.read_csv('processed-data/processed_previous_application.csv')
-print(f'Previous application shape: {previous_application.shape}')
-data = data.merge(previous_application, how='left', on='SK_ID_CURR')
+        # Merge additional dataframes
+        for df in self.dfs:
+            data = data.merge(df, how='left', on='SK_ID_CURR')
+            
+        # Remove duplicated columns, replace infinite values with NaN, and drop TARGET column
+        data = data.loc[:, ~data.columns.duplicated()]
+        data.replace([np.inf, -np.inf], np.nan, inplace=True)
+        data.drop(['TARGET'], axis=1, inplace=True, errors='ignore')
+        data.set_index('SK_ID_CURR', inplace=True)
+        print(f'Merged data shape: {data.shape}')
 
-# Merge with credit card balance
-credit_card_balance = pd.read_csv('processed-data/processed_credit_card_balance.csv')
-print(f'Credit card balance shape: {credit_card_balance.shape}')
-data = data.merge(credit_card_balance, how='left', on='SK_ID_CURR')
+        # Split train and test data
+        train = data[data['is_train'] == 1].drop(['is_train'], axis=1)
+        test = data[data['is_train'] == 0].drop(['is_train'], axis=1)
 
-# Merge with installments payments
-installments_payments = pd.read_csv('processed-data/processed_installments.csv')
-print(f'Installments payments shape: {installments_payments.shape}')
-data = data.merge(installments_payments, how='left', on='SK_ID_CURR')
+        # Sanitize columns and convert data types to float64
+        train = sanitize_columns(train)
+        test = sanitize_columns(test)
+        train = train.astype('float64')
+        test = test.astype('float64')
 
-# Merge with bureau
-bureau = pd.read_csv('processed-data/processed_bureau.csv')
-print(f'Bureau shape: {bureau.shape}')
-data = data.merge(bureau, how='left', on='SK_ID_CURR')
+        return train, test, target
 
-# Merge with pos cash balance
-pos_cash_balance = pd.read_csv('processed-data/processed_pos_cash.csv')
-print(f'POS cash balance shape: {pos_cash_balance.shape}')
-data = data.merge(pos_cash_balance, how='left', on='SK_ID_CURR')
+    def fit(self, train, target):
+        # Process train data and select features
+        train = self.process(train, target)
+        self.features = select_features_lightgbm(train, target, threshold=0.2)
+        print(f'Number of selected features: {len(self.features)}')
+        print('Top 10 features:', self.features.sort_values(ascending=False)[:20].index.tolist())
 
-# # Merge new features
-# new_data = pd.read_csv('processed-data/all_data.csv')
-# data = data.merge(new_data, how='left', on='SK_ID_CURR')
+        # Fit imputer and scaler on train data
+        train = train[self.features.index]
+        self.imputer.fit(train)
+        self.scaler.fit(train)
 
-# Print shape after merge
-print(f'Merged data shape: {data.shape}')
+    def transform(self, data):
+        # Transform data using imputer and scaler
+        data = data[self.features.index]
+        data = self.imputer.transform(data)
+        data = self.scaler.transform(data)
+        return data
+    
+    def fit_transform(self, train, target):
+        # Select features, fit imputer and scaler, and transform train data
+        self.features = select_features_lightgbm(train, target, threshold=0.2)
+        train = train[self.features.index]
+        train = self.imputer.fit_transform(train)
+        train = self.scaler.fit_transform(train)
+        return train
 
-# Drop duplicate columns
-data = data.loc[:, ~data.columns.duplicated()]
+if __name__ == '__main__':
+    # Read data from CSV files
+    app_train = pd.read_csv('processed-data/application_train.csv')
+    app_test = pd.read_csv('processed-data/application_test.csv')
+    target = pd.read_csv('processed-data/target.csv')
 
-# Replace inf with nan
-data.replace([np.inf, -np.inf], np.nan, inplace=True)
+    previous_application = pd.read_csv('processed-data/processed_previous_application.csv')
+    credit_card_balance = pd.read_csv('processed-data/processed_credit_card_balance.csv')
+    installments_payments = pd.read_csv('processed-data/processed_installments.csv')
+    bureau = pd.read_csv('processed-data/processed_bureau.csv')
+    pos_cash_balance = pd.read_csv('processed-data/processed_pos_cash.csv')
 
-# Drop target
-data.drop(['TARGET'], axis=1, inplace=True, errors='ignore')
+    # Initialize DataProcessor object
+    processor = DataProcessor(app_train, app_test, target, previous_application,
+                              credit_card_balance, installments_payments, bureau, pos_cash_balance)
+    
+    # Process train and test data, fit and transform train data, and transform test data
+    train, test, target = processor.process(app_train, app_test, target)
+    train = processor.fit_transform(train, target)
+    test = processor.transform(test)
 
-# Set index
-data.set_index('SK_ID_CURR', inplace=True)
+    # Initialize and train logistic regression model
+    model = LogisticRegression(class_weight='balanced', C=0.001, solver='newton-cholesky', max_iter=200)
+    
+    # Cross validate the model and calculate ROC AUC scores
+    print('Cross validating...')
+    scores = cross_val_score(model, train, target, cv=5, scoring='roc_auc')
+    mean_score = scores.mean()
+    gini_score = round(2*mean_score - 1, 5)
+    print(f'ROC AUC scores: {scores}')
+    print(f'ROC AUC mean: {mean_score}, GINI: {gini_score}')
+    
+    # Fit the model on train data, predict probabilities for test data, and create submission file
+    model.fit(train, target)
+    y_pred = model.predict_proba(test)[:, 1]
+    submission = pd.DataFrame(index=test.index, data={'TARGET': y_pred})
+    submission.sort_index(inplace=True)
 
-# Split train and test
-train = data[data['is_train'] == 1].drop(['is_train'], axis=1)
-test = data[data['is_train'] == 0].drop(['is_train'], axis=1)
-print(f'Train shape: {train.shape}, Test shape: {test.shape}')
-
-# Sanitize column
-train = sanitize_columns(train)
-test = sanitize_columns(test)
-
-# Astype into float
-train = train.astype('float64')
-test = test.astype('float64')
-
-# Feature selection
-selected_features = select_features_lightgbm(train, target, threshold=0.2)
-print(f'Number of selected features: {len(selected_features)}')
-print('Top 10 features:', selected_features.sort_values(ascending=False)[:20].index.tolist())
-train = train[selected_features.index]
-test = test[selected_features.index]
-
-# Fill missing values
-print('Filling missing values...')
-imputer = SimpleImputer(strategy='mean')
-train_imputed = imputer.fit_transform(train)
-test_imputed = imputer.transform(test)
-
-# # Select using SelectKBest
-# print('Selecting features...')
-# selector = SelectKBest(f_classif, k=400)
-# selector.fit(train_imputed, target)
-# train_imputed = selector.transform(train_imputed)
-# test_imputed = selector.transform(test_imputed)
-
-# Standardize
-print('Standardizing...')
-standard_scaler = StandardScaler()
-train_scaled = standard_scaler.fit_transform(train_imputed)
-test_scaled = standard_scaler.transform(test_imputed)
-
-# Convert to dataframe
-train = pd.DataFrame(index=train.index, data=train_scaled, columns=selected_features.index)
-test = pd.DataFrame(index=test.index, data=test_scaled, columns=selected_features.index)
-
-# Concat and save
-# train_merged = pd.concat([train, target], axis=1)
-# data_merged = pd.concat([train, test], axis=0)
-# data_merged.to_csv('processed-data/processed_data.csv')
-
-# Train
-model = LogisticRegression(class_weight='balanced', C=0.001, solver='newton-cholesky', max_iter=200)
-
-# Cross validate
-print('Cross validating...')
-scores = cross_val_score(model, train, target, cv=5, scoring='roc_auc')
-mean_score = scores.mean()
-gini_score = round(2*mean_score - 1, 5)
-print(f'ROC AUC scores: {scores}')
-print(f'ROC AUC mean: {mean_score}, GINI: {gini_score}')
-
-# Fit
-model.fit(train, target)
-print('Top 20 features:', train.columns[np.argsort(model.coef_[0])[-20:]].tolist())
-
-# Predict
-y_pred = model.predict_proba(test)[:, 1]
-submission = pd.DataFrame(index=test.index, data={'TARGET': y_pred})
-submission.sort_index(inplace=True)
-
-# Save submission
-submission.to_csv(f'submissions/submission-{gini_score}.csv')
+    submission.to_csv(f'submissions/submission{gini_score}.csv')
