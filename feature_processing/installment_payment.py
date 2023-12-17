@@ -5,7 +5,7 @@ from optbinning import BinningProcess
 import os
 import sys
 sys.path.append(os.getcwd())
-from functions.functions import *
+from functions.functions import select_features_iv, one_hot_encoder
 
 def create_features(df):
     new_features = {

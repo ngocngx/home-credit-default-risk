@@ -5,7 +5,7 @@ from optbinning import BinningProcess
 import os
 import sys
 sys.path.append(os.getcwd())
-from functions.functions import *
+from functions.functions import select_features_iv, one_hot_encoder
 
 def create_feature(df):
     new_features = {
@@ -108,10 +108,6 @@ previous_test_binned.index = previous_test.index
 # Merge original and binned
 previous_train_binned = pd.concat([previous_train, previous_train_binned], axis=1)
 previous_test_binned = pd.concat([previous_test, previous_test_binned], axis=1)
-
-# Sanitize columns
-previous_train_binned = sanitize_columns(previous_train_binned)
-previous_test_binned = sanitize_columns(previous_test_binned)
 
 # Select features by IV
 print('Selecting features...')

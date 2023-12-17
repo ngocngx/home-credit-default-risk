@@ -6,7 +6,7 @@ from optbinning import BinningProcess
 import os
 import sys
 sys.path.append(os.getcwd())
-from functions.functions import *
+from functions.functions import select_features_iv
 
 def create_features(df):
     # Calculate new features
@@ -119,13 +119,6 @@ test = test.select_dtypes('number')
 test = pd.concat([test, test_binned], axis=1)
 print(f'Train shape: {train.shape}, Test shape: {test.shape}')
 
-# # Select features
-# selected_features = select_features_lightgbm(train, y, threshold=0.1)
-# train = train[selected_features.index]
-# test = train[selected_features.index]
-# print(f'Number of selected features: {len(selected_features)}')
-# print(f'Top 10 selected features: {selected_features.sort_values(ascending=False)[:10].index.tolist()}')
-
 # Fill missing values
 print('Filling missing values...')
 imputer = SimpleImputer(strategy='mean').set_output(transform='pandas')
@@ -138,7 +131,6 @@ selected_features = select_features_iv(train, y, threshold=0.02)
 train = train[selected_features]
 test = test[selected_features]
 print(f'Number of selected features: {len(selected_features)}')
-
 
 # Rename columns
 train.columns = [f'APP_{col}' for col in train.columns]

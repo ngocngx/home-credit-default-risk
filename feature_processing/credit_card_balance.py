@@ -5,7 +5,7 @@ from optbinning import BinningProcess
 import os
 import sys
 sys.path.append(os.getcwd())
-from functions.functions import *
+from functions.functions import select_features_iv, one_hot_encoder
 
 def create_features(df):
     new_features = {
@@ -17,8 +17,6 @@ def create_features(df):
         'DPD_FLAG': df['SK_DPD'] > 0,
         # % of MINIMUM PAYMENTS MISSED
         'PERCENTAGE_OF_MINIMUM_PAYMENTS_MISSED': df['AMT_PAYMENT_CURRENT'] / df['AMT_INST_MIN_REGULARITY'],
-        #  RATIO OF CASH VS CARD SWIPES
-        # 'RATIO_OF_CASH_VS_CARD_SWIPES': df['CNT_DRAWINGS_ATM_CURRENT'] / df['CNT_DRAWINGS_CURRENT'],
         # Minimum Payments Only
         'MINIMUM_PAYMENTS_ONLY': df['AMT_PAYMENT_CURRENT'] == df['AMT_INST_MIN_REGULARITY'],
         # Utilization Rate
