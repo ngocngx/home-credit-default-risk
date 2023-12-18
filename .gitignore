@@ -1,9 +1,7 @@
 .venv/
 .DS_Store
 .trashcan/
-dseb-63-data-preparation-final-project/
 dataset-profiling/
 processed-data/
 raw-data/
-drafts/
 submissions/
